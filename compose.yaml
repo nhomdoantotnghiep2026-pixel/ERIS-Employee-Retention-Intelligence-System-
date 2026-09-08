@@ -1,0 +1,17 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: backend/.env
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+  ai:
+    profiles: [ai]
+    build:
+      context: .
+      dockerfile: ai-service/Dockerfile
+    env_file: ai-service/.env
+    expose: ["8000"]
+    restart: unless-stopped
