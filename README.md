@@ -1,43 +1,41 @@
-# ERIS — Backend scaffold theo database TalentGuard
+﻿# ERIS Backend
 
-Bộ khung backend Node.js/Express + PostgreSQL và service Python/FastAPI, dựng từ `schema.sql` người dùng cung cấp ngày 08/09/2026. Database nguồn dùng PostgreSQL 17.11 trên VPS; PostgreSQL 18 local là instance khác.
+Backend dùng Node.js/Express và PostgreSQL. Phần auth đã làm xong các API; phần nhân sự có API đọc, dashboard và xuất CSV. AI mới có bộ khung.
 
-**Trạng thái: scaffold có các API đọc dữ liệu, đăng nhập và validation chạy được; chưa phải backend đầy đủ nghiệp vụ.** Chưa kết nối VPS, chưa thực thi SQL lên database của nhóm. Không có dữ liệu nhân viên hoặc model đã train trong repo.
+## Chạy local
 
-## Bắt đầu
+Yêu cầu Node.js 22 trở lên.
 
-1. Đọc [hướng dẫn chạy](docs/setup.md).
-2. Điền thông tin database và tên role trong `backend/.env` dựa trên `.env.example`.
-3. Chạy trong thư mục `backend`:
+1. Tạo `backend/.env` từ `.env.example` nếu chưa có và điền kết nối database, JWT_SECRET.
+2. Với database mới, chạy `database/migrations/001_auth_sessions.sql` một lần sau khi có schema gốc. Migration này đã chạy trên VPS talentguard ngày 12/09/2026, không chạy lại trên database đó.
+3. Chạy từ thư mục dự án:
 
 ```powershell
+cd backend
 npm.cmd ci
-npm.cmd test
 npm.cmd run start:local
 ```
 
-## Những gì đã dựng
+Kiểm tra kết nối: `GET http://localhost:3000/health/ready` → `200`.
+Role thực tế trên VPS: ADMIN, HR_MANAGER, HR_STAFF, DATA. Đặt `ROLE_ANALYST=DATA` trong `.env`.
+Không commit `.env`; tài khoản đăng nhập ERIS khác tài khoản kết nối PostgreSQL.
 
-- Module riêng cho 12 bảng: users, roles, departments, positions, employees, employee_snapshots, model_versions, predictions, prediction_factors, retention_actions, employee_outcomes, audit_logs.
-- Mỗi module có routes, service, repository; cùng dùng helper truy vấn có tham số, phân trang giới hạn 100 bản ghi.
-- Đăng nhập bằng bcrypt + JWT; tải lại trạng thái và role mỗi request; từ chối role không được cấu hình. API users không trả password_hash.
-- Dashboard đếm kết quả mới nhất của từng nhân viên ACTIVE; báo cáo CSV tổng hợp phòng ban.
-- Validation đầu vào dự đoán và batch JSON theo **25 feature** `use_in_model_v1=TRUE`; kiểm tra thiếu dữ liệu, enum, integer, khoảng bắt buộc và cảnh báo ngoài khoảng quan sát.
-- Dockerfile, Compose, cấu hình mẫu, test tự động và tài liệu phân công.
-- Service AI có liveness và hợp đồng đầu vào cơ bản; readiness/predict trả `503 MODEL_NOT_READY` cho đến khi tích hợp model thật.
+## Test
 
-## Tài liệu
+Trong thư mục `backend`:
 
-- [Module và trạng thái triển khai](docs/modules.md)
-- [API và phân quyền](docs/api.md)
-- [Đối chiếu database với feature model](docs/feature-mapping.md)
-- [Cách chạy và kết nối](docs/setup.md)
-- [Kết quả kiểm thử và giới hạn](docs/testing.md)
-- [Schema tham chiếu](database/schema.reference.sql)
-- [Danh mục feature gốc](contracts/feature_catalog_v0.csv)
+```powershell
+npm.cmd test
+```
 
-## Các phần cần phát triển tiếp
+Lần chạy test gần nhất: 40/40 pass, dùng PostgreSQL nhúng và giả lập gửi email.
+Login, me, refresh và logout đã thử trên VPS. Refresh sau logout trả 401 đúng như mong đợi. Tài khoản test đã xóa; gửi email thật chưa test.
 
-CRUD/nhập CSV vào database, ghi audit log nghiệp vụ, quản lý tài khoản/role qua API, workflow HR, lưu prediction + SHAP trong transaction, model training/evaluation/version activation, cấu hình hệ thống và kiểm thử database thực. Các API đọc đã có chỉ phục vụ việc dựng nền tảng. Chưa có endpoint tự thực hiện quyết định nhân sự.
+- [API auth và cách test](docs/authentication.md)
+- [Request mẫu](backend/requests/auth.http)
+- [API nghiệp vụ](docs/api.md)
+- [Mapping feature AI](docs/feature-mapping.md)
 
-SQL trong `database/schema.reference.sql` là bản tham chiếu nguyên gốc, **không phải migration tự chạy**. Cấu hình kết nối dùng PostgreSQL trực tiếp vì schema hiện tại chứa users/password_hash riêng; chưa giả định Supabase Auth.
+## Phần còn lại
+
+Chưa hoàn thiện CRUD nhân sự, tích hợp model/SHAP và giao diện. Forgot/reset password đã có API, cần cấu hình SMTP để gửi email. Thư mục `ai-service` mới là bộ khung.

@@ -1,59 +1,80 @@
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { rateLimit } from 'express-rate-limit';
 import { HttpError } from '../common/errors.js';
 import { hasPermission } from '../common/permissions.js';
+import { createAuthRepository } from './auth/auth.repository.js';
+import { createAuthService, publicUser } from './auth/auth.service.js';
+import { createResetMailer } from './auth/auth.mailer.js';
 
-const publicUserColumns = 'u.id, u.email, u.full_name, u.status, u.role_id, r.name AS role_name';
-const tokenOptions = { algorithm: 'HS256', expiresIn: '15m', issuer: 'eris-api', audience: 'eris-web' };
-
-export function createAuth(db, config) {
+export function createAuth(db, config, injectedMailer) {
+  const repository = createAuthRepository(db);
+  const service = createAuthService(repository, config, injectedMailer ?? createResetMailer(config));
   const router = Router();
-  // Generated once: unknown accounts still perform one password verification.
-  const dummyHash = bcrypt.hashSync('invalid-account-placeholder', 12);
-  router.post('/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 10,
-    standardHeaders: 'draft-8', legacyHeaders: false }), async (req, res) => {
-    const { email, password } = req.body || {};
-    if (typeof email !== 'string' || email.length > 255 || typeof password !== 'string' || password.length > 1024) {
-      throw new HttpError(400, 'INVALID_CREDENTIALS', 'Provide email and password');
-    }
-    const { rows } = await db.query(`SELECT ${publicUserColumns}, u.password_hash
-      FROM public.users u JOIN public.roles r ON r.id = u.role_id WHERE u.email = $1`, [email.trim()]);
-    const user = rows[0];
-    const valid = await bcrypt.compare(password, user?.password_hash || dummyHash);
-    if (!valid || user?.status !== 'ACTIVE') throw new HttpError(401, 'LOGIN_FAILED', 'Invalid email or password');
-    const { password_hash, ...safeUser } = user;
-    res.set('Cache-Control', 'no-store').json({
-      access_token: jwt.sign({}, config.jwtSecret, { ...tokenOptions, subject: String(user.id) }),
-      token_type: 'Bearer', expires_in: 900, user: safeUser,
-    });
-  });
-
+  const cookieName = 'eris_refresh';
+  const cookieOptions = { httpOnly: true, secure: config.auth?.cookieSecure ?? true,
+    sameSite: config.auth?.cookieSameSite ?? 'lax', path: '/api' };
+  const clearCookie = res => res.clearCookie(cookieName, cookieOptions);
+  const readCookie = req => {
+    const pair = (req.headers.cookie || '').split(';').map(v => v.trim()).find(v => v.startsWith(`${cookieName}=`));
+    return pair?.slice(cookieName.length + 1);
+  };
+  const limited = limit => rateLimit({ windowMs: 900000, limit,
+    standardHeaders: 'draft-8', legacyHeaders: false,
+    message: { error: { code: 'RATE_LIMITED', message: 'Too many requests. Try again later' } } });
   const authenticate = async (req, res, next) => {
     const match = /^Bearer (\S+)$/i.exec(req.headers.authorization || '');
     if (!match) throw new HttpError(401, 'UNAUTHENTICATED', 'Bearer token required');
     let payload;
     try {
-      payload = jwt.verify(match[1], config.jwtSecret, {
-        algorithms: ['HS256'], issuer: tokenOptions.issuer, audience: tokenOptions.audience,
-      });
-      if (!/^\d+$/.test(payload.sub) || Number(payload.sub) > 2147483647) throw new Error('Invalid subject');
+      payload = jwt.verify(match[1], config.jwtSecret, { algorithms: ['HS256'], issuer: 'eris-api', audience: 'eris-web' });
+      if (typeof payload.sub !== 'string' || !/^[1-9]\d*$/.test(payload.sub)
+          || Number(payload.sub) > 2147483647 || !Number.isInteger(payload.exp)) throw new Error('Invalid claims');
     } catch { throw new HttpError(401, 'INVALID_TOKEN', 'Invalid or expired token'); }
-    // Reload status and role: disabling a user or changing roles takes effect immediately.
-    const { rows } = await db.query(`SELECT ${publicUserColumns}
-      FROM public.users u JOIN public.roles r ON r.id = u.role_id WHERE u.id = $1`, [payload.sub]);
-    if (rows[0]?.status !== 'ACTIVE') throw new HttpError(401, 'INACTIVE_USER', 'Account unavailable');
-    req.user = rows[0];
-    res.set('Cache-Control', 'no-store');
-    next();
+    const user = await repository.userById(payload.sub);
+    if (user?.status !== 'ACTIVE') throw new HttpError(401, 'INACTIVE_USER', 'Account unavailable');
+    req.user = user; res.set('Cache-Control', 'no-store'); next();
   };
   const authorize = group => (req, res, next) => {
-    if (!hasPermission(req.user?.role_name, group, config.roles)) {
-      throw new HttpError(403, 'FORBIDDEN', 'Permission denied');
-    }
+    if (!hasPermission(req.user?.role_name, group, config.roles)) throw new HttpError(403, 'FORBIDDEN', 'Permission denied');
     next();
   };
-  router.get('/me', authenticate, (req, res) => res.json({ data: req.user }));
-  return { router, authenticate, authorize };
+  router.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    // Browser cookie mutations must originate from the configured frontend.
+    // CLI clients may omit Origin; cross-site Fetch Metadata is still rejected.
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      if ((req.headers.origin && req.headers.origin !== config.origin)
+          || (!req.headers.origin && req.headers['sec-fetch-site'] === 'cross-site')) {
+        throw new HttpError(403, 'INVALID_ORIGIN', 'Request origin is not allowed');
+      }
+    }
+    next();
+  });
+  router.post('/login', limited(10), async (req, res) => {
+    const { refreshToken, expiresIn, ...result } = await service.login(req.body);
+    res.cookie(cookieName, refreshToken, { ...cookieOptions, maxAge: (config.auth?.refreshTtlSeconds ?? 604800) * 1000 });
+    if (req.baseUrl === '/api/v1/auth') {
+      return res.json({ ...result, access_token: result.accessToken, token_type: 'Bearer', expires_in: expiresIn });
+    }
+    res.json(result);
+  });
+  router.get('/me', authenticate, (req, res) => {
+    res.json(req.baseUrl === '/api/v1/auth' ? { data: req.user } : publicUser(req.user));
+  });
+  router.post('/refresh', limited(60), async (req, res) => {
+    try { res.json(await service.refresh(readCookie(req))); }
+    catch (error) { if (error.status === 401) clearCookie(res); throw error; }
+  });
+  router.post('/logout', async (req, res) => {
+    const result = await service.logout(readCookie(req)); clearCookie(res); res.json(result);
+  });
+  router.patch('/change-password', limited(10), authenticate, async (req, res) => {
+    const result = await service.changePassword(req.user.id, req.body); clearCookie(res); res.json(result);
+  });
+  router.post('/forgot-password', limited(5), async (req, res) => res.json(await service.forgotPassword(req.body)));
+  router.post('/reset-password', limited(10), async (req, res) => {
+    const result = await service.resetPassword(req.body); clearCookie(res); res.json(result);
+  });
+  return { router, authenticate, authorize, repository };
 }

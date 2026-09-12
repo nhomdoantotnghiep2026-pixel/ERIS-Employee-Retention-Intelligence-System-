@@ -1,11 +1,12 @@
-# API v0.1
+# API backend
 
-Base path: `/api/v1`. JSON mặc định. Các API dữ liệu yêu cầu `Authorization: Bearer <access_token>`.
+Các API nghiệp vụ dùng `/api/v1`, trả JSON và yêu cầu header `Authorization: Bearer <access_token>`.
 
 ## Auth
 
-- `POST /auth/login`: body `{"email":"...","password":"..."}`. Trả access_token, expires_in=900 và user đã loại password_hash.
-- `GET /auth/me`: user/status/role đọc lại từ database.
+Auth dùng `/api/auth`. ADMIN tạo tài khoản qua `POST /api/users`. Request, response và cách test ghi trong [authentication.md](authentication.md).
+
+Đường dẫn auth cũ `/api/v1/auth` vẫn hoạt động. Các đường dẫn trong bảng dưới đều thêm `/api/v1` ở đầu.
 
 ## Đọc dữ liệu
 
@@ -26,7 +27,7 @@ Các resource dưới đây đều hỗ trợ `GET /resource` và `GET /resource
 | outcomes | HR staff/manager | employee_id |
 | audit | admin | user_id, entity_id |
 
-Admin không tự động có quyền đọc hồ sơ nhân viên. Đây là mặc định tối thiểu cho scaffold; nhóm có thể sửa `common/permissions.js` sau khi chốt RBAC. Không có phân quyền theo phòng ban trong schema.
+Quyền đang khai báo ở `common/permissions.js`. ADMIN quản lý tài khoản, chưa được cấp quyền xem hồ sơ nhân viên. Hiện chưa giới hạn dữ liệu theo phòng ban.
 
 List: `?page=1&limit=20`, limit tối đa 100, thứ tự id giảm dần. Trả:
 

@@ -5,11 +5,12 @@ import { rateLimit } from 'express-rate-limit';
 import { randomUUID } from 'node:crypto';
 import { HttpError, errorHandler } from './common/errors.js';
 import { createAuth } from './modules/auth.js';
+import { createUserService } from './modules/users/users.create.js';
 import { resources } from './modules/index.js';
 import { createValidationRouter } from './modules/data-validation/data-validation.routes.js';
 import { createDashboardRouter, createReportsRouter } from './modules/dashboard/dashboard.routes.js';
 
-export function createApp({ db, config }) {
+export function createApp({ db, config, mailer }) {
   const app = express();
   app.disable('x-powered-by');
   app.use((req, res, next) => {
@@ -20,15 +21,20 @@ export function createApp({ db, config }) {
     })));
     next();
   });
-  app.use(helmet(), cors({ origin: config.origin }), express.json({ limit: '256kb' }));
+  app.use(helmet(), cors({ origin: config.origin, credentials: true }), express.json({ limit: '256kb' }));
   app.use(rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }));
   app.get('/health/live', (req, res) => res.json({ status: 'ok' }));
   app.get('/health/ready', async (req, res) => {
     try { await db.query('SELECT 1'); res.json({ status: 'ready' }); }
     catch { res.status(503).json({ status: 'unavailable' }); }
   });
-  const auth = createAuth(db, config);
+  const auth = createAuth(db, config, mailer);
+  app.use('/api/auth', auth.router);
   app.use('/api/v1/auth', auth.router);
+  const createUser = createUserService(auth.repository, config);
+  app.post(['/api/users', '/api/v1/users'], auth.authenticate, auth.authorize('admin'), async (req, res) => {
+    res.status(201).json(await createUser(req.user.id, req.body));
+  });
   app.use('/api/v1', auth.authenticate);
   for (const resource of resources) {
     app.use(`/api/v1${resource.path}`, auth.authorize(resource.permission), resource.createRouter(db));

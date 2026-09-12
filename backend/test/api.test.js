@@ -19,6 +19,7 @@ test('API authentication, permission boundaries and unavailable dependencies', a
     }] };
     return { rows: [] };
   } };
+  db.connect = async () => ({ query: db.query.bind(db), release() {} });
   const server = createApp({ db, config }).listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(() => new Promise(resolve => server.close(resolve)));

@@ -1,0 +1,45 @@
+@baseUrl = http://localhost:3000
+@accessToken = paste_access_token_locally
+@resetToken = paste_reset_token_from_email_locally
+
+### Login (HTTP client must retain Set-Cookie for refresh/logout)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{"email":"admin@eris.example","password":"YourActualPassword123!"}
+
+### Me
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{accessToken}}
+
+### Refresh — use cookie jar, not body refreshToken
+POST {{baseUrl}}/api/auth/refresh
+
+### Logout
+POST {{baseUrl}}/api/auth/logout
+
+### Change password
+PATCH {{baseUrl}}/api/auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"currentPassword":"YourActualPassword123!","newPassword":"AnotherPassword456!"}
+
+### Forgot password — requires SMTP configuration
+POST {{baseUrl}}/api/auth/forgot-password
+Content-Type: application/json
+
+{"email":"staff@eris.example"}
+
+### Reset password
+POST {{baseUrl}}/api/auth/reset-password
+Content-Type: application/json
+
+{"token":"{{resetToken}}","newPassword":"AnotherPassword456!"}
+
+### ADMIN creates an internal account (not auth/register)
+POST {{baseUrl}}/api/users
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"email":"staff@eris.example","password":"InitialPassword123!","fullName":"HR Staff","role":"HR_STAFF"}
