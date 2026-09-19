@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import jwt from 'jsonwebtoken';
+import { createTokens } from './auth/auth.tokens.js';
 import { rateLimit } from 'express-rate-limit';
 import { HttpError } from '../common/errors.js';
 import { hasPermission } from '../common/permissions.js';
@@ -9,6 +9,7 @@ import { createResetMailer } from './auth/auth.mailer.js';
 
 export function createAuth(db, config, injectedMailer) {
   const repository = createAuthRepository(db);
+  const tokens = createTokens(config);
   const service = createAuthService(repository, config, injectedMailer ?? createResetMailer(config));
   const router = Router();
   const cookieName = 'eris_refresh';
@@ -27,9 +28,7 @@ export function createAuth(db, config, injectedMailer) {
     if (!match) throw new HttpError(401, 'UNAUTHENTICATED', 'Bearer token required');
     let payload;
     try {
-      payload = jwt.verify(match[1], config.jwtSecret, { algorithms: ['HS256'], issuer: 'eris-api', audience: 'eris-web' });
-      if (typeof payload.sub !== 'string' || !/^[1-9]\d*$/.test(payload.sub)
-          || Number(payload.sub) > 2147483647 || !Number.isInteger(payload.exp)) throw new Error('Invalid claims');
+      payload = tokens.verify('access', match[1]);
     } catch { throw new HttpError(401, 'INVALID_TOKEN', 'Invalid or expired token'); }
     const user = await repository.userById(payload.sub);
     if (user?.status !== 'ACTIVE') throw new HttpError(401, 'INACTIVE_USER', 'Account unavailable');
@@ -67,7 +66,7 @@ export function createAuth(db, config, injectedMailer) {
     catch (error) { if (error.status === 401) clearCookie(res); throw error; }
   });
   router.post('/logout', async (req, res) => {
-    const result = await service.logout(readCookie(req)); clearCookie(res); res.json(result);
+    const result = await service.logout(); clearCookie(res); res.json(result);
   });
   router.patch('/change-password', limited(10), authenticate, async (req, res) => {
     const result = await service.changePassword(req.user.id, req.body); clearCookie(res); res.json(result);

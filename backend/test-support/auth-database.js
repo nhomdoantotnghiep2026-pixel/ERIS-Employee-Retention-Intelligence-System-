@@ -1,13 +1,9 @@
 import { PGlite } from '@electric-sql/pglite';
-import { readFileSync } from 'node:fs';
+import { authSchema } from './auth-schema.js';
 
 export async function authDatabase() {
   const engine = new PGlite();
-  const schema = readFileSync(new URL('../../database/schema.reference.sql', import.meta.url), 'utf8')
-    .replace(/^\\.*$/gm, '')
-    .replace(/^ALTER .* OWNER TO .*;\r?$/gm, '');
-  await engine.exec(schema);
-  await engine.exec(readFileSync(new URL('../../database/migrations/001_auth_sessions.sql', import.meta.url), 'utf8'));
+  await engine.exec(authSchema);
   // PGlite is single-connection. Serialize the Pool-shaped adapter so HTTP
   // requests cannot accidentally join another request's transaction.
   let tail = Promise.resolve();

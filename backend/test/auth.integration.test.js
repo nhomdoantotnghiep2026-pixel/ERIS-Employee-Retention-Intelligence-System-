@@ -4,10 +4,10 @@ import { once } from 'node:events';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { createApp } from '../src/app.js';
-import { tokenHash } from '../src/modules/auth/auth.service.js';
+import { createTokens } from '../src/modules/auth/auth.tokens.js';
 import { authDatabase } from '../test-support/auth-database.js';
 
-test('Auth specification against embedded PostgreSQL and HTTP', async t => {
+test('Cookie authentication against team schema and HTTP', async t => {
   const db = await authDatabase();
   t.after(() => db.close());
   const password = 'InitialPassword123!';
@@ -39,7 +39,7 @@ test('Auth specification against embedded PostgreSQL and HTTP', async t => {
     return { request, login, deliveries };
   }
 
-  await t.test('login matches spec, normalizes email, hashes refresh token and sets cookie', async sub => {
+  await t.test('login sets signed seven-day refresh cookie without session tables', async sub => {
     const f = await fixture(sub);
     const result = await f.login(' STAFF@ERIS.TEST ');
     assert.equal(result.status, 200);
@@ -50,8 +50,11 @@ test('Auth specification against embedded PostgreSQL and HTTP', async t => {
     assert.match(result.cookie, /HttpOnly/); assert.match(result.cookie, /Secure/);
     assert.match(result.cookie, /SameSite=Lax/); assert.match(result.cookie, /Path=\/api/);
     const raw = result.cookie.split(';')[0].split('=')[1];
-    const { rows } = await db.query('SELECT token_hash FROM public.auth_sessions');
-    assert.equal(rows[0].token_hash, tokenHash(raw)); assert.notEqual(rows[0].token_hash, raw);
+    const refreshClaims = createTokens(config).verify('refresh', raw);
+    assert.equal(refreshClaims.exp - refreshClaims.iat, 604800);
+    assert.match(result.cookie, /Max-Age=604800/);
+    const tables = (await db.query("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename")).rows;
+    assert.deepEqual(tables.map(r => r.tablename), ['audit_logs', 'roles', 'users']);
     const claims = jwt.verify(result.body.accessToken, config.jwtSecret);
     assert.equal(claims.exp - claims.iat, 900);
   });
@@ -76,27 +79,36 @@ test('Auth specification against embedded PostgreSQL and HTTP', async t => {
     await db.query("UPDATE public.users SET status='INACTIVE' WHERE email='staff@eris.test'");
     assert.equal((await f.request('/api/auth/me', { method: 'GET', access })).status, 401);
   });
-  await t.test('refresh works without access token; invalid, expired, disabled sessions fail', async sub => {
+  await t.test('refresh checks signature, expiry and active user without creating a new cookie', async sub => {
     const f = await fixture(sub); const session = await f.login(); const cookie = session.cookie;
-    assert.equal((await f.request('/api/auth/refresh', { cookie })).status, 200);
+    const refreshed = await f.request('/api/auth/refresh', { cookie });
+    assert.equal(refreshed.status, 200); assert.equal(refreshed.cookie, null);
     assert.equal((await f.request('/api/auth/refresh')).status, 401);
     await db.query("UPDATE public.users SET status='INACTIVE' WHERE email='staff@eris.test'");
     assert.equal((await f.request('/api/auth/refresh', { cookie })).status, 401);
     await db.query("UPDATE public.users SET status='ACTIVE' WHERE email='staff@eris.test'");
-    await db.query("UPDATE public.auth_sessions SET created_at=now()-interval '8 days', expires_at=now()-interval '1 day'");
-    const expired = await f.request('/api/auth/refresh', { cookie });
+    const expiredToken = createTokens(config).sign('refresh', { id: 2 }, -1);
+    const expired = await f.request('/api/auth/refresh', { cookie: 'eris_refresh=' + expiredToken });
+    assert.equal((await f.request('/api/auth/refresh', { cookie: 'eris_refresh=' + expiredToken + 'x' })).status, 401);
     assert.equal(expired.status, 401); assert.match(expired.cookie, /Expires=Thu, 01 Jan 1970/);
   });
-  await t.test('logout revokes only current session and is idempotent', async sub => {
+  await t.test('logout clears browser cookie; copied refresh token remains valid until expiry', async sub => {
     const f = await fixture(sub); const one = await f.login(); const two = await f.login();
     const logout = await f.request('/api/auth/logout', { cookie: one.cookie });
     assert.equal(logout.body.message, 'Logged out successfully');
     assert.match(logout.cookie, /Expires=Thu, 01 Jan 1970/);
-    assert.equal((await f.request('/api/auth/refresh', { cookie: one.cookie })).status, 401);
+    assert.equal((await f.request('/api/auth/refresh')).status, 401);
+    assert.equal((await f.request('/api/auth/refresh', { cookie: one.cookie })).status, 200);
     assert.equal((await f.request('/api/auth/refresh', { cookie: two.cookie })).status, 200);
     assert.equal((await f.request('/api/auth/logout')).status, 200);
   });
-  await t.test('change password verifies old password and revokes all sessions', async sub => {
+  await t.test('HTTP guards reject access and refresh token substitution', async sub => {
+    const f = await fixture(sub); const login = await f.login();
+    const refresh = login.cookie.split(';')[0].split('=')[1];
+    assert.equal((await f.request('/api/auth/me', { method: 'GET', access: refresh })).status, 401);
+    assert.equal((await f.request('/api/auth/refresh', { cookie: 'eris_refresh=' + login.body.accessToken })).status, 401);
+  });
+  await t.test('change password clears cookie but does not revoke stateless refresh tokens', async sub => {
     const f = await fixture(sub); const one = await f.login(); const two = await f.login();
     const access = one.body.accessToken;
     assert.equal((await f.request('/api/auth/change-password', { method: 'PATCH', access,
@@ -105,11 +117,12 @@ test('Auth specification against embedded PostgreSQL and HTTP', async t => {
     const changed = await f.request('/api/auth/change-password', { method: 'PATCH', access,
       body: { currentPassword: password, newPassword: 'ChangedPassword123!' } });
     assert.equal(changed.status, 200);
-    for (const session of [one, two]) assert.equal((await f.request('/api/auth/refresh', { cookie: session.cookie })).status, 401);
+    assert.match(changed.cookie, /Expires=Thu, 01 Jan 1970/);
+    for (const session of [one, two]) assert.equal((await f.request('/api/auth/refresh', { cookie: session.cookie })).status, 200);
     assert.equal((await f.login()).status, 401);
     assert.equal((await f.login('staff@eris.test', 'ChangedPassword123!')).status, 200);
   });
-  await t.test('forgot response is generic; reset token is hashed, single-use and revokes sessions', async sub => {
+  await t.test('reset link is password-bound, single-use and does not revoke refresh tokens', async sub => {
     const f = await fixture(sub); const login = await f.login();
     const known = await f.request('/api/auth/forgot-password', { body: { email: 'staff@eris.test' } });
     const unknown = await f.request('/api/auth/forgot-password', { body: { email: 'unknown@eris.test' } });
@@ -117,20 +130,22 @@ test('Auth specification against embedded PostgreSQL and HTTP', async t => {
     assert.deepEqual(known.body, unknown.body); assert.deepEqual(known.body, inactive.body);
     assert.equal(f.deliveries.length, 1);
     const token = f.deliveries[0].token;
-    const { rows } = await db.query('SELECT token_hash FROM public.password_reset_tokens');
-    assert.equal(rows[0].token_hash, tokenHash(token));
+    const storedUser = (await db.query("SELECT id, password_hash FROM public.users WHERE email='staff@eris.test'")).rows[0];
+    const resetClaims = createTokens(config).verify('reset', token, storedUser.password_hash);
+    assert.equal(resetClaims.exp - resetClaims.iat, 1800);
     assert.ok(!JSON.stringify(known.body).includes(token));
     const body = { token, newPassword: 'ResetPassword456!' };
     assert.equal((await f.request('/api/auth/reset-password', { body })).status, 200);
     assert.equal((await f.request('/api/auth/reset-password', { body })).status, 400);
-    assert.equal((await f.request('/api/auth/refresh', { cookie: login.cookie })).status, 401);
+    assert.equal((await f.request('/api/auth/refresh', { cookie: login.cookie })).status, 200);
     assert.equal((await f.login('staff@eris.test', 'ResetPassword456!')).status, 200);
   });
   await t.test('expired reset and reused token during parallel requests are rejected', async sub => {
     const f = await fixture(sub);
     await f.request('/api/auth/forgot-password', { body: { email: 'staff@eris.test' } });
-    await db.query("UPDATE public.password_reset_tokens SET created_at=now()-interval '2 hours', expires_at=now()-interval '1 hour'");
-    assert.equal((await f.request('/api/auth/reset-password', { body: { token: f.deliveries[0].token, newPassword: 'ResetPassword456!' } })).status, 400);
+    const user = (await db.query("SELECT id, password_hash FROM public.users WHERE email='staff@eris.test'")).rows[0];
+    const expiredReset = createTokens(config).sign('reset', user, -1);
+    assert.equal((await f.request('/api/auth/reset-password', { body: { token: expiredReset, newPassword: 'ResetPassword456!' } })).status, 400);
     await f.request('/api/auth/forgot-password', { body: { email: 'staff@eris.test' } });
     const body = { token: f.deliveries[1].token, newPassword: 'ResetPassword456!' };
     const results = await Promise.all([f.request('/api/auth/reset-password', { body }), f.request('/api/auth/reset-password', { body })]);
@@ -145,7 +160,7 @@ test('Auth specification against embedded PostgreSQL and HTTP', async t => {
       body: { currentPassword: password, newPassword: 'ChangedPassword123!' } })).status, 200);
     assert.equal((await f.request('/api/auth/reset-password', { body: { token: f.deliveries[0].token, newPassword: 'ResetPassword456!' } })).status, 400);
   });
-  await t.test('password and revocations roll back together if audit write fails', async sub => {
+  await t.test('password update rolls back if audit write fails', async sub => {
     const f = await fixture(sub); const session = await f.login();
     await db.query("ALTER TABLE public.audit_logs ADD CONSTRAINT test_password_audit_failure CHECK (action <> 'AUTH_PASSWORD_CHANGED')");
     try {
@@ -155,12 +170,12 @@ test('Auth specification against embedded PostgreSQL and HTTP', async t => {
       assert.equal((await f.request('/api/auth/refresh', { cookie: session.cookie })).status, 200);
     } finally { await db.query('ALTER TABLE public.audit_logs DROP CONSTRAINT test_password_audit_failure'); }
   });
-  await t.test('SMTP failure does not reveal account and invalidates the undelivered token', async sub => {
+  await t.test('SMTP failure does not reveal account or token', async sub => {
     const f = await fixture(sub, { mailer: { configured: true, async sendReset() { throw new Error('SMTP secret'); } } });
     const known = await f.request('/api/auth/forgot-password', { body: { email: 'staff@eris.test' } });
     const unknown = await f.request('/api/auth/forgot-password', { body: { email: 'none@eris.test' } });
     assert.equal(known.status, 200); assert.deepEqual(known.body, unknown.body);
-    assert.equal((await db.query('SELECT count(*)::int AS n FROM public.password_reset_tokens WHERE used_at IS NULL')).rows[0].n, 0);
+    assert.equal(known.body.token, undefined);
   });
   await t.test('missing SMTP configuration fails uniformly', async sub => {
     const f = await fixture(sub, { mailer: { configured: false } });

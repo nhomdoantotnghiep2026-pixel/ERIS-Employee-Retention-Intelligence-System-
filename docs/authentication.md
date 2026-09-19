@@ -1,6 +1,6 @@
 ﻿# Authentication
 
-Gồm 7 API auth và API tạo tài khoản theo file đặc tả. Chỉ ADMIN được tạo tài khoản.
+Gồm 7 API auth và API ADMIN tạo tài khoản. Theo yêu cầu mới, refresh token lưu trong cookie, không có bảng session/reset token hoặc Redis.
 
 ## API
 
@@ -9,7 +9,7 @@ Gồm 7 API auth và API tạo tài khoản theo file đặc tả. Chỉ ADMIN �
 | POST | /api/auth/login | email, password | accessToken, user; cookie refresh |
 | GET | /api/auth/me | Bearer accessToken | id, email, fullName, role, status |
 | POST | /api/auth/refresh | Cookie eris_refresh | accessToken mới |
-| POST | /api/auth/logout | Cookie eris_refresh | Thu hồi phiên, xóa cookie |
+| POST | /api/auth/logout | Không cần body | Xóa cookie ở trình duyệt hiện tại |
 | PATCH | /api/auth/change-password | Bearer; currentPassword, newPassword | Đổi mật khẩu, yêu cầu đăng nhập lại |
 | POST | /api/auth/forgot-password | email | Thông báo chung, gửi link nếu account hợp lệ |
 | POST | /api/auth/reset-password | token, newPassword | Đặt mật khẩu mới |
@@ -22,9 +22,9 @@ Lỗi chính: 400 sai dữ liệu/reset token, 401 sai thông tin đăng nhập/
 
 ## Cấu hình
 
-- Migration: `database/migrations/001_auth_sessions.sql`, chỉ chạy một lần. Đã áp dụng trên VPS ngày 12/09/2026.
-- Database mới cần kiểm tra email trùng theo `lower(btrim(email))` trước khi chạy migration. Không restore schema gốc đè lên database đã có.
-- Account API cần SELECT trên roles; SELECT/INSERT/UPDATE trên users, auth_sessions, password_reset_tokens; INSERT trên audit_logs và USAGE các sequence tương ứng. API đọc audit cần SELECT trên audit_logs.
+- Dùng schema nhóm trưởng quản lý. Backend không tạo bảng hay chạy migration.
+- Account API cần SELECT trên roles; SELECT/INSERT/UPDATE trên users; INSERT trên audit_logs và USAGE sequence của users/audit_logs. API đọc audit cần SELECT trên audit_logs.
+- Email được chuẩn hóa trong API. Tạo user có khóa giao dịch theo email để tránh hai request API cùng tạo trùng; dữ liệu nhập trực tiếp qua công cụ khác vẫn cần nhóm kiểm tra.
 - `.env` đặt đúng ROLE_ADMIN, ROLE_HR_MANAGER, ROLE_HR_STAFF, ROLE_ANALYST. Tài khoản ADMIN đầu tiên do nhóm thiết lập sẵn.
 - Local HTTP: `AUTH_COOKIE_SECURE=false`. Production: HTTPS và `AUTH_COOKIE_SECURE=true`.
 - SMTP: điền SMTP_HOST, SMTP_PORT, SMTP_FROM và thông tin xác thực nếu cần. Port 587 dùng STARTTLS; port 465 đặt SMTP_SECURE=true.
@@ -52,14 +52,16 @@ try {
 }
 ```
 
-Kỳ vọng: login/me/refresh/logout thành công; refresh cuối trả 401 (Unauthorized). Không mở URL login trên thanh địa chỉ trình duyệt vì thao tác đó gửi GET, trong khi login cần POST.
+Kỳ vọng: login/me/refresh/logout thành công; refresh cuối trả 401 vì cookie jar đã xóa cookie. Nếu cố gửi lại bản cookie cũ thì refresh vẫn thành công đến hạn. Mở URL login trên thanh địa chỉ trình duyệt gửi GET, trong khi login cần POST.
 
 ## Cách phiên đăng nhập hoạt động
 
-Access token mặc định 15 phút; refresh session 7 ngày, reset token 30 phút. Refresh token nằm trong cookie HttpOnly; database chỉ lưu hash. Frontend dùng `credentials: 'include'` và Origin đúng cấu hình.
+Access JWT mặc định 15 phút; refresh JWT 7 ngày cố định, không tự gia hạn. Refresh token nằm trong cookie HttpOnly; không lưu token vào database. Frontend dùng `credentials: 'include'` và Origin đúng cấu hình. Mỗi lần refresh vẫn kiểm tra chữ ký, hạn dùng và trạng thái user trong database.
 
-Logout thu hồi refresh session hiện tại. Đổi/reset mật khẩu thu hồi mọi refresh session và reset token của user. Access token cũ vẫn có thể dùng đến hạn theo đặc tả, không có blacklist.
+Logout, đổi/reset mật khẩu đều xóa cookie trên trình duyệt hiện tại. Access và refresh token đã sao chép hoặc còn ở thiết bị khác vẫn có hiệu lực đến hạn; không có chức năng revoke hoặc logout toàn bộ thiết bị. Đây là thay đổi so với yêu cầu thu hồi phiên trong file Word ban đầu. User INACTIVE bị từ chối truy cập/refresh; bật lại ACTIVE thì token chưa hết hạn có thể dùng lại.
 
-Mật khẩu mới: tối thiểu 12 ký tự, có chữ hoa/thường, số, ký tự đặc biệt, tối đa 72 byte UTF-8. Password dùng bcrypt. Tạo user và audit cùng transaction; đổi/reset password cũng commit cùng thu hồi phiên.
+Link reset dùng JWT 30 phút, ký bằng khóa phụ thuộc JWT_SECRET và password_hash hiện tại; không đưa hash vào token. Đổi/reset mật khẩu làm các link reset cũ hết hiệu lực. Yêu cầu gửi link mới không hủy link cũ; gửi email lỗi không thu hồi được token đã tạo. Reset kiểm tra chữ ký sau khi khóa user trong transaction để tránh dùng lại link.
+
+Mật khẩu mới: tối thiểu 12 ký tự, có chữ hoa/thường, số, ký tự đặc biệt, tối đa 72 byte UTF-8. Password dùng bcrypt. Tạo user và audit cùng transaction; đổi/reset password cũng commit cùng audit.
 
 Rate limit đang lưu trong RAM; nếu chạy nhiều server thì cần dùng store chung. Test PGlite chỉ có một kết nối, nên vẫn cần test đồng thời trên PostgreSQL thật. Chưa test gửi email qua SMTP thật.

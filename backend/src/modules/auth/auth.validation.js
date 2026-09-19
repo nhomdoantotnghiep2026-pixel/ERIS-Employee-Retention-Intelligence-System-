@@ -27,4 +27,3 @@ export function fullName(value) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > 150) invalid('fullName requires 1 to 150 characters');
   return value.trim();
 }
-export const opaqueToken = value => typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value);

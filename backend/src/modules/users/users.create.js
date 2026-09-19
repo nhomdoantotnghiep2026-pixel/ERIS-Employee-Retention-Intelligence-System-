@@ -14,6 +14,7 @@ export function createUserService(repository, config) {
       return await repository.transaction(async repo => {
         const actor = await repo.userById(actorId, true);
         if (actor?.status !== 'ACTIVE' || actor.role_name !== config.roles.admin) throw new HttpError(403, 'FORBIDDEN', 'Only ADMIN can create users');
+        await repo.lockEmail(email);
         if (await repo.userByEmail(email)) throw new HttpError(409, 'EMAIL_EXISTS', 'Email already exists');
         const role = await repo.roleByName(body.role);
         if (!role) throw new HttpError(400, 'INVALID_ROLE', 'Role is not configured in the database');
