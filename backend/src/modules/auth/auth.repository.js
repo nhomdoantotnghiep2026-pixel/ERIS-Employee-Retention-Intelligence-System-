@@ -24,8 +24,8 @@ export function createAuthRepository(db) {
     async updatePassword(userId, hash) {
       await db.query('UPDATE public.users SET password_hash = $2 WHERE id = $1', [userId, hash]);
     },
-    async roleByName(name) {
-      const { rows } = await db.query('SELECT id FROM public.roles WHERE name = $1', [name]);
+    async roleById(id) {
+      const { rows } = await db.query('SELECT id, name FROM public.roles WHERE id = $1', [id]);
       return rows[0];
     },
     async lockEmail(email) {

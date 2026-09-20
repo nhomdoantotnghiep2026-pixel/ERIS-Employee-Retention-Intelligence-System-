@@ -11,7 +11,7 @@ const dummyHash = bcrypt.hashSync('not-a-real-account-password', 12);
 
 export function createAuthService(repository, config, mailer) {
   const tokens = createTokens(config);
-  const accessTtl = config.auth?.accessTtlSeconds ?? 900;
+  const accessTtl = config.auth?.accessTtlSeconds ?? 3600;
   const refreshTtl = config.auth?.refreshTtlSeconds ?? 604800;
   const resetTtl = config.auth?.resetTtlSeconds ?? 1800;
   return {

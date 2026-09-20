@@ -32,7 +32,7 @@ export function createApp({ db, config, mailer }) {
   app.use('/api/auth', auth.router);
   app.use('/api/v1/auth', auth.router);
   const createUser = createUserService(auth.repository, config);
-  app.post(['/api/users', '/api/v1/users'], auth.authenticate, auth.authorize('admin'), async (req, res) => {
+  app.post(['/api/auth/user_register', '/api/v1/auth/user_register'], auth.authenticate, auth.authorize('admin'), async (req, res) => {
     res.status(201).json(await createUser(req.user.id, req.body));
   });
   app.use('/api/v1', auth.authenticate);

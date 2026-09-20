@@ -6,7 +6,9 @@ const config = readConfig();
 const db = createDatabase(config.db);
 db.on('error', () => console.error(JSON.stringify({ event: 'database_pool_error' })));
 const server = createApp({ db, config }).listen(config.port, '0.0.0.0', () => {
-  console.info(JSON.stringify({ event: 'server_started', port: config.port }));
+  const baseUrl = `http://localhost:${config.port}`;
+  console.info(`ERIS backend is running at ${baseUrl}`);
+  console.info(`Postman base URL: ${baseUrl}/api`);
 });
 let stopping = false;
 function shutdown() {

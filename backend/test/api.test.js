@@ -39,9 +39,11 @@ test('API authentication, permission boundaries and unavailable dependencies', a
     const body = await response.json(); token = body.access_token;
     assert.ok(token); assert.equal(body.user.password_hash, undefined);
   });
-  await t.test('HR staff can list employees but cannot list users', async () => {
+  await t.test('HR staff can list employees but cannot register users', async () => {
     assert.equal((await get('/api/v1/employees')).status, 200);
-    assert.equal((await get('/api/v1/users')).status, 403);
+    const response = await fetch(base + '/api/v1/auth/user_register', { method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}' });
+    assert.equal(response.status, 403);
   });
   await t.test('inactive users lose access despite an unexpired token', async () => {
     state.status = 'INACTIVE';

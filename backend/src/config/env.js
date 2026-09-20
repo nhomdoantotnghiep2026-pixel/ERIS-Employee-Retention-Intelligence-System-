@@ -33,7 +33,7 @@ export function readConfig(env = process.env) {
   const originUrl = new URL(origin);
   if (!['http:', 'https:'].includes(originUrl.protocol) || originUrl.origin !== origin) throw new Error('CORS_ORIGIN must be one exact HTTP(S) origin');
   const auth = {
-    accessTtlSeconds: integer('ACCESS_TOKEN_TTL_SECONDS', 900, 60, 1800),
+    accessTtlSeconds: integer('ACCESS_TOKEN_TTL_SECONDS', 3600, 60, 3600),
     refreshTtlSeconds: integer('REFRESH_TOKEN_TTL_SECONDS', 604800, 3600, 2592000),
     resetTtlSeconds: integer('RESET_TOKEN_TTL_SECONDS', 1800, 60, 3600),
     cookieSecure: boolean('AUTH_COOKIE_SECURE', production),

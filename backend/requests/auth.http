@@ -38,8 +38,8 @@ Content-Type: application/json
 {"token":"{{resetToken}}","newPassword":"AnotherPassword456!"}
 
 ### ADMIN creates an internal account (not auth/register)
-POST {{baseUrl}}/api/users
+POST {{baseUrl}}/api/auth/user_register
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
-{"email":"staff@eris.example","password":"InitialPassword123!","fullName":"HR Staff","role":"HR_STAFF"}
+{"email":"staff@eris.example","password":"InitialPassword123!","fullName":"HR Staff","roleId":2}

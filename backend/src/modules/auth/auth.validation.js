@@ -27,3 +27,7 @@ export function fullName(value) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > 150) invalid('fullName requires 1 to 150 characters');
   return value.trim();
 }
+export function roleId(value) {
+  if (!Number.isSafeInteger(value) || value < 1) invalid('roleId must be a positive integer');
+  return value;
+}
