@@ -24,6 +24,9 @@ export function createAuthRepository(db) {
     async updatePassword(userId, hash) {
       await db.query('UPDATE public.users SET password_hash = $2 WHERE id = $1', [userId, hash]);
     },
+    async updateStatus(userId, status) {
+      await db.query('UPDATE public.users SET status = $2 WHERE id = $1', [userId, status]);
+    },
     async roleById(id) {
       const { rows } = await db.query('SELECT id, name FROM public.roles WHERE id = $1', [id]);
       return rows[0];
@@ -33,9 +36,9 @@ export function createAuthRepository(db) {
       // Serialize API registrations for the same normalized email across admins.
       await db.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['eris:user:' + email]);
     },
-    async insertUser({ email, passwordHash, fullName, roleId }) {
+    async insertUser({ email, passwordHash, fullName, roleId, status = 'ACTIVE' }) {
       const { rows } = await db.query(`INSERT INTO public.users (email, password_hash, full_name, role_id, status)
-        VALUES ($1, $2, $3, $4, 'ACTIVE') RETURNING id`, [email, passwordHash, fullName, roleId]);
+        VALUES ($1, $2, $3, $4, $5) RETURNING id`, [email, passwordHash, fullName, roleId, status]);
       return rows[0].id;
     },
     async audit(actorId, action, entityId) {

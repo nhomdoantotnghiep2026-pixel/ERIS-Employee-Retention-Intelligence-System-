@@ -7,7 +7,9 @@
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3000" },
     { "key": "accessToken", "value": "" },
-    { "key": "resetToken", "value": "" }
+    { "key": "changePasswordToken", "value": "" },
+    { "key": "changePasswordOtp", "value": "" },
+    { "key": "resetOtp", "value": "" }
   ],
   "item": [
     {
@@ -20,7 +22,9 @@
         "listen": "test",
         "script": { "exec": [
           "if (pm.response.code === 200) {",
-          "  pm.collectionVariables.set('accessToken', pm.response.json().accessToken);",
+          "  const body = pm.response.json();",
+          "  if (body.accessToken) pm.collectionVariables.set('accessToken', body.accessToken);",
+          "  pm.collectionVariables.set('changePasswordToken', body.passwordChangeToken || body.accessToken || '');",
           "}"
         ] }
       }],
@@ -45,7 +49,7 @@
         "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
         "method": "POST",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": { "mode": "raw", "raw": "{\n  \"email\": \"hrstaff@example.com\",\n  \"password\": \"TestPassword123!\",\n  \"fullName\": \"HR Staff Test\",\n  \"roleId\": 3\n}", "options": { "raw": { "language": "json" } } },
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"hrstaff@example.com\",\n  \"fullName\": \"HR Staff Test\",\n  \"roleId\": 3\n}", "options": { "raw": { "language": "json" } } },
         "url": "{{baseUrl}}/api/auth/user_register"
       }
     },
@@ -62,12 +66,20 @@
       "request": { "method": "POST", "url": "{{baseUrl}}/api/auth/refresh" }
     },
     {
-      "name": "06 - Change Password",
+      "name": "06A - Send Change Password OTP",
       "request": {
         "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/change-password/otp"
+      }
+    },
+    {
+      "name": "06B - Change Password",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{changePasswordToken}}", "type": "string" }] },
         "method": "PATCH",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"CurrentPassword123!\",\n  \"newPassword\": \"NewPassword456!\"\n}", "options": { "raw": { "language": "json" } } },
+        "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"CurrentPassword123!\",\n  \"otp\": \"{{changePasswordOtp}}\",\n  \"newPassword\": \"NewPassword456!\"\n}", "options": { "raw": { "language": "json" } } },
         "url": "{{baseUrl}}/api/auth/change-password"
       }
     },
@@ -85,7 +97,7 @@
       "request": {
         "method": "POST",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": { "mode": "raw", "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"ResetPassword789!\"\n}", "options": { "raw": { "language": "json" } } },
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"hrstaff@example.com\",\n  \"otp\": \"{{resetOtp}}\",\n  \"newPassword\": \"ResetPassword789!\"\n}", "options": { "raw": { "language": "json" } } },
         "url": "{{baseUrl}}/api/auth/reset-password"
       }
     },

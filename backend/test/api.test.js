@@ -7,6 +7,7 @@ import { createApp } from '../src/app.js';
 
 test('API authentication, permission boundaries and unavailable dependencies', async t => {
   const config = { origin: 'http://localhost:5173', jwtSecret: 'unit-test-secret-'.repeat(3),
+    initialUserPassword: 'Testpassword123!',
     roles: { admin: 'ADMIN', staff: 'STAFF', manager: 'MANAGER', analyst: 'ANALYST' } };
   let state = { role: 'STAFF', status: 'ACTIVE', dbDown: false };
   const hash = await bcrypt.hash('test-password', 4);

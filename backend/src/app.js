@@ -10,7 +10,7 @@ import { resources } from './modules/index.js';
 import { createValidationRouter } from './modules/data-validation/data-validation.routes.js';
 import { createDashboardRouter, createReportsRouter } from './modules/dashboard/dashboard.routes.js';
 
-export function createApp({ db, config, mailer }) {
+export function createApp({ db, config, mailer, otpStore }) {
   const app = express();
   app.disable('x-powered-by');
   app.use((req, res, next) => {
@@ -28,10 +28,10 @@ export function createApp({ db, config, mailer }) {
     try { await db.query('SELECT 1'); res.json({ status: 'ready' }); }
     catch { res.status(503).json({ status: 'unavailable' }); }
   });
-  const auth = createAuth(db, config, mailer);
+  const auth = createAuth(db, config, mailer, otpStore);
   app.use('/api/auth', auth.router);
   app.use('/api/v1/auth', auth.router);
-  const createUser = createUserService(auth.repository, config);
+  const createUser = createUserService(auth.repository, config, auth.mailer);
   app.post(['/api/auth/user_register', '/api/v1/auth/user_register'], auth.authenticate, auth.authorize('admin'), async (req, res) => {
     res.status(201).json(await createUser(req.user.id, req.body));
   });

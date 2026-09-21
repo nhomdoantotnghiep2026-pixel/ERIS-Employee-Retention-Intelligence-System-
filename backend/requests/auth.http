@@ -1,6 +1,7 @@
 @baseUrl = http://localhost:3000
 @accessToken = paste_access_token_locally
-@resetToken = paste_reset_token_from_email_locally
+@resetOtp = paste_6_digit_otp_from_email
+@changePasswordOtp = paste_6_digit_change_otp_from_email
 
 ### Login (HTTP client must retain Set-Cookie for refresh/logout)
 POST {{baseUrl}}/api/auth/login
@@ -19,11 +20,14 @@ POST {{baseUrl}}/api/auth/refresh
 POST {{baseUrl}}/api/auth/logout
 
 ### Change password
+POST {{baseUrl}}/api/auth/change-password/otp
+Authorization: Bearer {{accessToken}}
+
 PATCH {{baseUrl}}/api/auth/change-password
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
-{"currentPassword":"YourActualPassword123!","newPassword":"AnotherPassword456!"}
+{"currentPassword":"YourActualPassword123!","otp":"{{changePasswordOtp}}","newPassword":"AnotherPassword456!"}
 
 ### Forgot password — requires SMTP configuration
 POST {{baseUrl}}/api/auth/forgot-password
@@ -35,11 +39,11 @@ Content-Type: application/json
 POST {{baseUrl}}/api/auth/reset-password
 Content-Type: application/json
 
-{"token":"{{resetToken}}","newPassword":"AnotherPassword456!"}
+{"email":"staff@eris.example","otp":"{{resetOtp}}","newPassword":"AnotherPassword456!"}
 
 ### ADMIN creates an internal account (not auth/register)
 POST {{baseUrl}}/api/auth/user_register
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
-{"email":"staff@eris.example","password":"InitialPassword123!","fullName":"HR Staff","roleId":2}
+{"email":"staff@eris.example","fullName":"HR Staff","roleId":2}

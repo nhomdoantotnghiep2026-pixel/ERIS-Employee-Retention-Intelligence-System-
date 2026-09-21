@@ -31,3 +31,7 @@ export function roleId(value) {
   if (!Number.isSafeInteger(value) || value < 1) invalid('roleId must be a positive integer');
   return value;
 }
+export function otp(value) {
+  if (typeof value !== 'string' || !/^\d{6}$/.test(value)) invalid('OTP must contain exactly 6 digits');
+  return value;
+}
