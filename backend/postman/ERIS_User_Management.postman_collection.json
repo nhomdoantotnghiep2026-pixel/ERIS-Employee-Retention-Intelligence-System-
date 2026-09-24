@@ -1,0 +1,227 @@
+{
+  "info": {
+    "name": "ERIS User Management API",
+    "description": "Collection test 6 API User Management. Chạy Login ADMIN trước, sau đó chạy List Users để tự lưu userId của một tài khoản không phải ADMIN.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "adminEmail", "value": "nhomdoantotnghiep2026@gmail.com" },
+    { "key": "adminPassword", "value": "NhapMatKhauAdminTaiDay123!", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "userId", "value": "", "type": "string" },
+    { "key": "roleId", "value": "3", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "00 - Login ADMIN",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login thành công', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  pm.collectionVariables.set('accessToken', body.accessToken);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      }
+    },
+    {
+      "name": "01 - List Users",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Trả về danh sách user', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) {",
+              "  const users = pm.response.json().data || [];",
+              "  const target = users.find(user => user.role && user.role.name !== 'ADMIN');",
+              "  if (target) pm.collectionVariables.set('userId', String(target.id));",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/users?page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "users"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" },
+            { "key": "search", "value": "", "disabled": true },
+            { "key": "roleId", "value": "{{roleId}}", "disabled": true },
+            { "key": "status", "value": "ACTIVE", "disabled": true }
+          ]
+        }
+      }
+    },
+    {
+      "name": "02 - Get User Detail",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Trả về chi tiết user', function () { pm.response.to.have.status(200); });",
+              "pm.test('Không lộ password hash', function () { pm.expect(pm.response.json()).not.to.have.property('password_hash'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/users/{{userId}}"
+      }
+    },
+    {
+      "name": "03 - Update User Profile",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Cập nhật thành công', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"User Updated\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/users/{{userId}}"
+      }
+    },
+    {
+      "name": "04 - List Roles",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Trả về danh sách role', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/roles"
+      }
+    },
+    {
+      "name": "05 - Change User Role",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Đổi role thành công', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"roleId\": {{roleId}}\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/users/{{userId}}/role"
+      }
+    },
+    {
+      "name": "06 - Lock User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Khóa user thành công', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) pm.expect(pm.response.json().status).to.eql('INACTIVE');"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"INACTIVE\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/users/{{userId}}/status"
+      }
+    },
+    {
+      "name": "07 - Unlock User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Mở khóa user thành công', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) pm.expect(pm.response.json().status).to.eql('ACTIVE');"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"ACTIVE\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/users/{{userId}}/status"
+      }
+    }
+  ]
+}
