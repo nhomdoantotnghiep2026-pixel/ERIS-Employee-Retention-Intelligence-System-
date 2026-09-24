@@ -6,6 +6,8 @@ import { randomUUID } from 'node:crypto';
 import { HttpError, errorHandler } from './common/errors.js';
 import { createAuth } from './modules/auth.js';
 import { createUserService } from './modules/users/users.create.js';
+import { createService as createUserManagementService } from './modules/users/users.service.js';
+import { createRouter as createUserManagementRouter } from './modules/users/users.routes.js';
 import { resources } from './modules/index.js';
 import { createValidationRouter } from './modules/data-validation/data-validation.routes.js';
 import { createDashboardRouter, createReportsRouter } from './modules/dashboard/dashboard.routes.js';
@@ -34,6 +36,12 @@ export function createApp({ db, config, mailer, otpStore }) {
   const createUser = createUserService(auth.repository, config, auth.mailer);
   app.post(['/api/auth/user_register', '/api/v1/auth/user_register'], auth.authenticate, auth.authorize('admin'), async (req, res) => {
     res.status(201).json(await createUser(req.user.id, req.body));
+  });
+  const userManagement = createUserManagementService(db, config);
+  const userRouter = createUserManagementRouter(userManagement);
+  app.use(['/api/users', '/api/v1/users'], auth.authenticate, userRouter);
+  app.get(['/api/roles', '/api/v1/user-management/roles'], auth.authenticate, async (req, res) => {
+    res.json(await userManagement.roles(req.user));
   });
   app.use('/api/v1', auth.authenticate);
   for (const resource of resources) {

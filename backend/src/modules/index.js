@@ -1,4 +1,3 @@
-import * as resource0 from './users/users.routes.js';
 import * as resource1 from './roles/roles.routes.js';
 import * as resource2 from './departments/departments.routes.js';
 import * as resource3 from './positions/positions.routes.js';
@@ -12,7 +11,6 @@ import * as resource10 from './outcomes/outcomes.routes.js';
 import * as resource11 from './audit/audit.routes.js';
 
 export const resources = [
-  { path: '/users', ...resource0 },
   { path: '/roles', ...resource1 },
   { path: '/departments', ...resource2 },
   { path: '/positions', ...resource3 },
@@ -25,4 +23,3 @@ export const resources = [
   { path: '/outcomes', ...resource10 },
   { path: '/audit', ...resource11 },
 ];
-
