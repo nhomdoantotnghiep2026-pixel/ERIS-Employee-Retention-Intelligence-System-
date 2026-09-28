@@ -56,7 +56,14 @@ test('Positions API uses the existing schema and ADMIN permission', async t => {
   assert.equal((await request('/api/positions', { method: 'POST', access: admin,
     body: { title: 'Software Engineer', level: 'Senior' } })).status, 409);
   assert.equal((await request('/api/positions', { method: 'POST', access: admin,
+    body: { title: 'software engineer', level: 'senior' } })).status, 409);
+  assert.equal((await request('/api/positions', { method: 'POST', access: admin,
     body: { title: '' } })).status, 400);
+
+  const other = (await db.query(`INSERT INTO public.positions(title, level)
+    VALUES ('Other Position', 'Senior') RETURNING id`)).rows[0];
+  assert.equal((await request(`/api/positions/${other.id}`, { method: 'PATCH', access: admin,
+    body: { title: 'SOFTWARE ENGINEER' } })).status, 409);
 
   const list = await request('/api/positions?q=software&page=1&limit=10', { access: admin });
   assert.equal(list.status, 200);

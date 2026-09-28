@@ -30,6 +30,18 @@ export function createRepository(db) {
         FROM public.positions WHERE id = $1 FOR UPDATE`, [id]);
       return rows[0];
     },
+    async lockUnique(title, level) {
+      await db.query(`SELECT pg_advisory_xact_lock(hashtext(
+        'eris:position:' || lower(btrim($1::text)) || ':' || coalesce(lower(btrim($2::text)), '<null>')
+      ))`, [title, level]);
+    },
+    async findDuplicate(title, level, excludeId = null) {
+      const { rows } = await db.query(`SELECT id FROM public.positions
+        WHERE lower(btrim(title)) = lower(btrim($1::text))
+          AND ((level IS NULL AND $2::text IS NULL) OR lower(btrim(level)) = lower(btrim($2::text)))
+          AND ($3::integer IS NULL OR id <> $3) LIMIT 1`, [title, level, excludeId]);
+      return rows[0];
+    },
     async create({ title, level, description }) {
       const { rows } = await db.query(`INSERT INTO public.positions (title, level, description)
         VALUES ($1, $2, $3) RETURNING id, title, level, description, created_at, updated_at`,

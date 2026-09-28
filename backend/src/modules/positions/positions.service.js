@@ -49,6 +49,10 @@ export function createService(db) {
       };
       try {
         return await repository.transaction(async repo => {
+          await repo.lockUnique(input.title, input.level);
+          if (await repo.findDuplicate(input.title, input.level)) {
+            throw new HttpError(409, 'POSITION_EXISTS', 'A position with the same title and level already exists');
+          }
           const position = await repo.create(input);
           await repo.audit(actorId, 'POSITION_CREATED', position.id);
           return position;
@@ -72,6 +76,14 @@ export function createService(db) {
             || (level.present && level.value !== current.level)
             || (description.present && description.value !== current.description);
           if (!changed) return current;
+          if (title !== undefined || level.present) {
+            const effectiveTitle = title ?? current.title;
+            const effectiveLevel = level.present ? level.value : current.level;
+            await repo.lockUnique(effectiveTitle, effectiveLevel);
+            if (await repo.findDuplicate(effectiveTitle, effectiveLevel, id)) {
+              throw new HttpError(409, 'POSITION_EXISTS', 'A position with the same title and level already exists');
+            }
+          }
           const position = await repo.update(id, { title, level, description });
           await repo.audit(actorId, 'POSITION_UPDATED', id);
           return position;
