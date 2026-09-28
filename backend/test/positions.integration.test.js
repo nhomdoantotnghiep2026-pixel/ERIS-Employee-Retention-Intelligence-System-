@@ -53,10 +53,18 @@ test('Positions API uses the existing schema and ADMIN permission', async t => {
   assert.equal(created.status, 201);
   assert.equal(created.body.title, 'Software Engineer');
   assert.equal(created.body.level, 'Senior');
+  const detail = await request(`/api/positions/${created.body.id}`, { access: admin });
+  assert.equal(detail.status, 200);
+  assert.equal(detail.body.data.id, created.body.id);
+  assert.equal((await request('/api/positions/999999', { access: admin })).status, 404);
   assert.equal((await request('/api/positions', { method: 'POST', access: admin,
     body: { title: 'Software Engineer', level: 'Senior' } })).status, 409);
   assert.equal((await request('/api/positions', { method: 'POST', access: admin,
-    body: { title: 'software engineer', level: 'senior' } })).status, 409);
+    body: { title: 'software engineer', level: 'Senior' } })).status, 409);
+  assert.equal((await request('/api/positions', { method: 'POST', access: admin,
+    body: { title: 'Missing Level' } })).status, 400);
+  assert.equal((await request('/api/positions', { method: 'POST', access: admin,
+    body: { title: 'Invalid Level', level: 'Intern' } })).status, 400);
   assert.equal((await request('/api/positions', { method: 'POST', access: admin,
     body: { title: '' } })).status, 400);
 
@@ -70,11 +78,13 @@ test('Positions API uses the existing schema and ADMIN permission', async t => {
   assert.equal(list.body.data.length, 1);
 
   const updated = await request(`/api/positions/${created.body.id}`, { method: 'PATCH', access: admin,
-    body: { title: 'Platform Engineer', level: null, description: null } });
+    body: { title: 'Platform Engineer', level: 'Manager', description: null } });
   assert.equal(updated.status, 200);
   assert.equal(updated.body.title, 'Platform Engineer');
-  assert.equal(updated.body.level, null);
+  assert.equal(updated.body.level, 'Manager');
   assert.equal(updated.body.description, null);
+  assert.equal((await request(`/api/positions/${created.body.id}`, { method: 'PATCH', access: admin,
+    body: { level: null } })).status, 400);
   assert.equal((await request('/api/positions/999999', { method: 'PATCH', access: admin,
     body: { title: 'Missing' } })).status, 404);
   assert.equal((await request(`/api/positions/${created.body.id}`, { method: 'PATCH', access: admin,

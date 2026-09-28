@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ERIS Positions API",
-    "description": "Collection test Positions API trên nhánh positions. Chạy request theo thứ tự từ 00 đến 05.",
+    "description": "Collection test Positions API trên nhánh positions. Chạy request theo thứ tự từ 00 đến 06. Level hợp lệ: Junior, Senior, Lead, Manager, Director.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -15,7 +15,8 @@
     { "key": "accessToken", "value": "", "type": "string" },
     { "key": "positionId", "value": "", "type": "string" },
     { "key": "positionTitle", "value": "", "type": "string" },
-    { "key": "positionDuplicateTitle", "value": "", "type": "string" }
+    { "key": "positionDuplicateTitle", "value": "", "type": "string" },
+    { "key": "positionLevel", "value": "Junior", "type": "string", "description": "Junior | Senior | Lead | Manager | Director" }
   ],
   "item": [
     {
@@ -68,12 +69,23 @@
       "request": {
         "method": "POST",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": { "mode": "raw", "raw": "{\n  \"title\": \"{{positionTitle}}\",\n  \"level\": \"Junior\",\n  \"description\": \"Created from Postman\"\n}", "options": { "raw": { "language": "json" } } },
+        "body": { "mode": "raw", "raw": "{\n  \"title\": \"{{positionTitle}}\",\n  \"level\": \"{{positionLevel}}\",\n  \"description\": \"Created from Postman\"\n}", "options": { "raw": { "language": "json" } } },
         "url": "{{baseUrl}}/api/positions"
       }
     },
     {
-      "name": "03 - Reject Duplicate Position",
+      "name": "03 - Get Position Detail",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Chi tiết position trả 200', () => pm.response.to.have.status(200));",
+        "if (pm.response.code === 200) pm.expect(String(pm.response.json().data.id)).to.eql(pm.collectionVariables.get('positionId'));"
+      ] } }],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/positions/{{positionId}}"
+      }
+    },
+    {
+      "name": "04 - Reject Duplicate Position",
       "event": [
         { "listen": "prerequest", "script": { "exec": [
           "pm.collectionVariables.set('positionDuplicateTitle', pm.collectionVariables.get('positionTitle').toLowerCase());"
@@ -86,12 +98,12 @@
       "request": {
         "method": "POST",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": { "mode": "raw", "raw": "{\n  \"title\": \"{{positionDuplicateTitle}}\",\n  \"level\": \"junior\"\n}", "options": { "raw": { "language": "json" } } },
+        "body": { "mode": "raw", "raw": "{\n  \"title\": \"{{positionDuplicateTitle}}\",\n  \"level\": \"{{positionLevel}}\"\n}", "options": { "raw": { "language": "json" } } },
         "url": "{{baseUrl}}/api/positions"
       }
     },
     {
-      "name": "04 - Update Position",
+      "name": "05 - Update Position",
       "event": [{ "listen": "test", "script": { "exec": [
         "pm.test('Cập nhật position trả 200', () => pm.response.to.have.status(200));",
         "if (pm.response.code === 200) { const b=pm.response.json(); pm.expect(b.level).to.eql('Senior'); pm.expect(b.description).to.eql(null); }"
@@ -104,7 +116,7 @@
       }
     },
     {
-      "name": "05 - Position Not Found",
+      "name": "06 - Position Not Found",
       "event": [{ "listen": "test", "script": { "exec": [
         "pm.test('ID không tồn tại trả 404', () => pm.response.to.have.status(404));",
         "pm.test('Đúng error code', () => pm.expect(pm.response.json().error.code).to.eql('POSITION_NOT_FOUND'));"

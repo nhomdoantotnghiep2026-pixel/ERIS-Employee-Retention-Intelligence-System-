@@ -3,6 +3,8 @@ import { positiveInteger } from '../../common/pagination.js';
 import { createReadService } from '../../common/read-resource.js';
 import { createRepository } from './positions.repository.js';
 
+export const positionLevels = Object.freeze(['Junior', 'Senior', 'Lead', 'Manager', 'Director']);
+
 const bodyObject = (body, allowed) => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     throw new HttpError(400, 'VALIDATION_ERROR', 'JSON object required');
@@ -24,6 +26,12 @@ const nullableText = (value, name, maximum) => {
   }
   return value.trim();
 };
+const levelValue = value => {
+  if (typeof value !== 'string' || !positionLevels.includes(value)) {
+    throw new HttpError(400, 'VALIDATION_ERROR', `level must be one of: ${positionLevels.join(', ')}`);
+  }
+  return value;
+};
 const optional = (body, key, parse) => Object.hasOwn(body, key)
   ? { present: true, value: parse(body[key]) }
   : { present: false, value: null };
@@ -42,9 +50,10 @@ export function createService(db) {
     async create(actorId, body) {
       bodyObject(body, ['title', 'level', 'description']);
       if (!Object.hasOwn(body, 'title')) throw new HttpError(400, 'VALIDATION_ERROR', 'title is required');
+      if (!Object.hasOwn(body, 'level')) throw new HttpError(400, 'VALIDATION_ERROR', 'level is required');
       const input = {
         title: requiredText(body.title, 'title', 150),
-        level: Object.hasOwn(body, 'level') ? nullableText(body.level, 'level', 50) : null,
+        level: levelValue(body.level),
         description: Object.hasOwn(body, 'description') ? nullableText(body.description, 'description') : null,
       };
       try {
@@ -66,7 +75,7 @@ export function createService(db) {
         throw new HttpError(400, 'VALIDATION_ERROR', 'title, level or description is required');
       }
       const title = Object.hasOwn(body, 'title') ? requiredText(body.title, 'title', 150) : undefined;
-      const level = optional(body, 'level', value => nullableText(value, 'level', 50));
+      const level = optional(body, 'level', levelValue);
       const description = optional(body, 'description', value => nullableText(value, 'description'));
       try {
         return await repository.transaction(async repo => {
