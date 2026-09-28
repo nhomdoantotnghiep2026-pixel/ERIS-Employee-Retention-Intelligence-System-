@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ERIS Departments API",
-    "description": "Collection test Departments API trên nhánh departments. Chạy request theo thứ tự từ 00 đến 05.",
+    "description": "Collection test Departments API trên nhánh departments. Chạy request theo thứ tự từ 00 đến 06.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -73,7 +73,18 @@
       }
     },
     {
-      "name": "03 - Reject Duplicate Department",
+      "name": "03 - Get Department Detail",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Chi tiết department trả 200', () => pm.response.to.have.status(200));",
+        "if (pm.response.code === 200) pm.expect(String(pm.response.json().data.id)).to.eql(pm.collectionVariables.get('departmentId'));"
+      ] } }],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/departments/{{departmentId}}"
+      }
+    },
+    {
+      "name": "04 - Reject Duplicate Department",
       "event": [
         { "listen": "prerequest", "script": { "exec": [
           "pm.collectionVariables.set('departmentDuplicateName', pm.collectionVariables.get('departmentName').toLowerCase());"
@@ -91,7 +102,7 @@
       }
     },
     {
-      "name": "04 - Update Department",
+      "name": "05 - Update Department",
       "event": [{ "listen": "test", "script": { "exec": [
         "pm.test('Cập nhật department trả 200', () => pm.response.to.have.status(200));",
         "if (pm.response.code === 200) pm.expect(pm.response.json().description).to.eql(null);"
@@ -104,7 +115,7 @@
       }
     },
     {
-      "name": "05 - Department Not Found",
+      "name": "06 - Department Not Found",
       "event": [{ "listen": "test", "script": { "exec": [
         "pm.test('ID không tồn tại trả 404', () => pm.response.to.have.status(404));",
         "pm.test('Đúng error code', () => pm.expect(pm.response.json().error.code).to.eql('DEPARTMENT_NOT_FOUND'));"

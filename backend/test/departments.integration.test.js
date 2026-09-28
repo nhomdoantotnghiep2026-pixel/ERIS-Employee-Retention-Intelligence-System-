@@ -50,6 +50,10 @@ test('Departments API uses the existing schema and ADMIN permission', async t =>
     body: { name: 'Engineering', description: 'Product engineering' } });
   assert.equal(created.status, 201);
   assert.equal(created.body.name, 'Engineering');
+  const detail = await request(`/api/departments/${created.body.id}`, { access: admin });
+  assert.equal(detail.status, 200);
+  assert.equal(detail.body.data.id, created.body.id);
+  assert.equal((await request('/api/departments/999999', { access: admin })).status, 404);
   assert.equal((await request('/api/departments', { method: 'POST', access: admin,
     body: { name: 'Engineering' } })).status, 409);
   assert.equal((await request('/api/departments', { method: 'POST', access: admin,
