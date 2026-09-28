@@ -14,7 +14,8 @@
     { "key": "adminPassword", "value": "NhapMatKhauAdminTaiDay123!", "type": "string" },
     { "key": "accessToken", "value": "", "type": "string" },
     { "key": "departmentId", "value": "", "type": "string" },
-    { "key": "departmentName", "value": "", "type": "string" }
+    { "key": "departmentName", "value": "", "type": "string" },
+    { "key": "departmentDuplicateName", "value": "", "type": "string" }
   ],
   "item": [
     {
@@ -73,14 +74,19 @@
     },
     {
       "name": "03 - Reject Duplicate Department",
-      "event": [{ "listen": "test", "script": { "exec": [
-        "pm.test('Department trùng trả 409', () => pm.response.to.have.status(409));",
-        "pm.test('Đúng error code', () => pm.expect(pm.response.json().error.code).to.eql('DEPARTMENT_EXISTS'));"
-      ] } }],
+      "event": [
+        { "listen": "prerequest", "script": { "exec": [
+          "pm.collectionVariables.set('departmentDuplicateName', pm.collectionVariables.get('departmentName').toLowerCase());"
+        ] } },
+        { "listen": "test", "script": { "exec": [
+          "pm.test('Department khác hoa thường vẫn trả 409', () => pm.response.to.have.status(409));",
+          "pm.test('Đúng error code', () => pm.expect(pm.response.json().error.code).to.eql('DEPARTMENT_EXISTS'));"
+        ] } }
+      ],
       "request": {
         "method": "POST",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": { "mode": "raw", "raw": "{\n  \"name\": \"{{departmentName}}\"\n}", "options": { "raw": { "language": "json" } } },
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"{{departmentDuplicateName}}\"\n}", "options": { "raw": { "language": "json" } } },
         "url": "{{baseUrl}}/api/departments"
       }
     },

@@ -53,7 +53,14 @@ test('Departments API uses the existing schema and ADMIN permission', async t =>
   assert.equal((await request('/api/departments', { method: 'POST', access: admin,
     body: { name: 'Engineering' } })).status, 409);
   assert.equal((await request('/api/departments', { method: 'POST', access: admin,
+    body: { name: 'engineering' } })).status, 409);
+  assert.equal((await request('/api/departments', { method: 'POST', access: admin,
     body: { name: '' } })).status, 400);
+
+  const other = (await db.query(`INSERT INTO public.departments(name)
+    VALUES ('Other Department') RETURNING id`)).rows[0];
+  assert.equal((await request(`/api/departments/${other.id}`, { method: 'PATCH', access: admin,
+    body: { name: 'ENGINEERING' } })).status, 409);
 
   const list = await request('/api/departments?q=engine&page=1&limit=10', { access: admin });
   assert.equal(list.status, 200);

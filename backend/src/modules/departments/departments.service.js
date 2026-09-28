@@ -41,6 +41,10 @@ export function createService(db) {
       };
       try {
         return await repository.transaction(async repo => {
+          await repo.lockUnique(input.name);
+          if (await repo.findDuplicate(input.name)) {
+            throw new HttpError(409, 'DEPARTMENT_EXISTS', 'Department name already exists');
+          }
           const department = await repo.create(input);
           await repo.audit(actorId, 'DEPARTMENT_CREATED', department.id);
           return department;
@@ -64,6 +68,12 @@ export function createService(db) {
           const changed = (name !== undefined && name !== current.name)
             || (description.present && description.value !== current.description);
           if (!changed) return current;
+          if (name !== undefined) {
+            await repo.lockUnique(name);
+            if (await repo.findDuplicate(name, id)) {
+              throw new HttpError(409, 'DEPARTMENT_EXISTS', 'Department name already exists');
+            }
+          }
           const department = await repo.update(id, { name, description });
           await repo.audit(actorId, 'DEPARTMENT_UPDATED', id);
           return department;

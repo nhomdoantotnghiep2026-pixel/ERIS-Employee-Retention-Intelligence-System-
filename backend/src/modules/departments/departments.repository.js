@@ -30,6 +30,17 @@ export function createRepository(db) {
         FROM public.departments WHERE id = $1 FOR UPDATE`, [id]);
       return rows[0];
     },
+    async lockUnique(name) {
+      await db.query(`SELECT pg_advisory_xact_lock(hashtext(
+        'eris:department:' || lower(btrim($1::text))
+      ))`, [name]);
+    },
+    async findDuplicate(name, excludeId = null) {
+      const { rows } = await db.query(`SELECT id FROM public.departments
+        WHERE lower(btrim(name)) = lower(btrim($1::text))
+          AND ($2::integer IS NULL OR id <> $2) LIMIT 1`, [name, excludeId]);
+      return rows[0];
+    },
     async create({ name, description }) {
       const { rows } = await db.query(`INSERT INTO public.departments (name, description)
         VALUES ($1, $2) RETURNING id, name, description, created_at, updated_at`, [name, description]);
