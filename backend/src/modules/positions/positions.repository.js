@@ -1,19 +1,53 @@
 import { createReadRepository } from '../../common/read-resource.js';
 
 export const definition = {
-  "table": "positions",
-  "columns": [
-    "id",
-    "title",
-    "level",
-    "description",
-    "created_at",
-    "updated_at"
-  ],
-  "filters": [],
-  "search": [
-    "title"
-  ]
+  table: 'positions',
+  columns: ['id', 'title', 'level', 'description', 'created_at', 'updated_at'],
+  filters: [],
+  search: ['title'],
 };
-export const createRepository = db => createReadRepository(db, definition);
 
+export function createRepository(db) {
+  const read = createReadRepository(db, definition);
+  return {
+    ...read,
+    async transaction(work) {
+      const client = await db.connect();
+      try {
+        await client.query('BEGIN');
+        const result = await work(createRepository(client));
+        await client.query('COMMIT');
+        return result;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
+    async findByIdForUpdate(id) {
+      const { rows } = await db.query(`SELECT id, title, level, description, created_at, updated_at
+        FROM public.positions WHERE id = $1 FOR UPDATE`, [id]);
+      return rows[0];
+    },
+    async create({ title, level, description }) {
+      const { rows } = await db.query(`INSERT INTO public.positions (title, level, description)
+        VALUES ($1, $2, $3) RETURNING id, title, level, description, created_at, updated_at`,
+      [title, level, description]);
+      return rows[0];
+    },
+    async update(id, { title, level, description }) {
+      const { rows } = await db.query(`UPDATE public.positions SET
+        title = COALESCE($2, title),
+        level = CASE WHEN $3 THEN $4 ELSE level END,
+        description = CASE WHEN $5 THEN $6 ELSE description END
+        WHERE id = $1 RETURNING id, title, level, description, created_at, updated_at`,
+      [id, title, level.present, level.value, description.present, description.value]);
+      return rows[0];
+    },
+    async audit(actorId, action, entityId) {
+      await db.query(`INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id)
+        VALUES ($1, $2, 'positions', $3)`, [actorId, action, entityId]);
+    },
+  };
+}

@@ -11,6 +11,7 @@ import { createRouter as createUserManagementRouter } from './modules/users/user
 import { resources } from './modules/index.js';
 import { createValidationRouter } from './modules/data-validation/data-validation.routes.js';
 import { createDashboardRouter, createReportsRouter } from './modules/dashboard/dashboard.routes.js';
+import * as positions from './modules/positions/positions.routes.js';
 
 export function createApp({ db, config, mailer, otpStore }) {
   const app = express();
@@ -43,6 +44,7 @@ export function createApp({ db, config, mailer, otpStore }) {
   app.get(['/api/roles', '/api/v1/user-management/roles'], auth.authenticate, async (req, res) => {
     res.json(await userManagement.roles(req.user));
   });
+  app.use('/api/positions', auth.authenticate, auth.authorize(positions.permission), positions.createRouter(db));
   app.use('/api/v1', auth.authenticate);
   for (const resource of resources) {
     app.use(`/api/v1${resource.path}`, auth.authorize(resource.permission), resource.createRouter(db));
