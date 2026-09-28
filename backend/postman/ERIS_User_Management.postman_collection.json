@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ERIS User Management API",
-    "description": "Collection test 6 API User Management. Chạy Login ADMIN trước, sau đó chạy List Users để tự lưu userId của một tài khoản không phải ADMIN.",
+    "description": "Collection test User Management. Chạy Login ADMIN trước, sau đó chạy List Users để tự lưu userId của một tài khoản không phải ADMIN. Update profile phải dùng access token của chính user; trạng thái chỉ hỗ trợ khóa tài khoản.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -19,6 +19,9 @@
     { "key": "adminEmail", "value": "nhomdoantotnghiep2026@gmail.com" },
     { "key": "adminPassword", "value": "NhapMatKhauAdminTaiDay123!", "type": "string" },
     { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "userEmail", "value": "user@example.com" },
+    { "key": "userPassword", "value": "NhapMatKhauUserTaiDay123!", "type": "string" },
+    { "key": "userAccessToken", "value": "", "type": "string" },
     { "key": "userId", "value": "", "type": "string" },
     { "key": "roleId", "value": "3", "type": "string" }
   ],
@@ -105,7 +108,38 @@
       }
     },
     {
-      "name": "03 - Update User Profile",
+      "name": "03 - Login Target User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('User login thành công', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  pm.collectionVariables.set('userAccessToken', body.accessToken || '');",
+              "  if (body.user && body.user.id) pm.collectionVariables.set('userId', String(body.user.id));",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      }
+    },
+    {
+      "name": "04 - Update Own Full Name",
       "event": [
         {
           "listen": "test",
@@ -117,6 +151,12 @@
         }
       ],
       "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{userAccessToken}}", "type": "string" }
+          ]
+        },
         "method": "PATCH",
         "header": [
           { "key": "Content-Type", "value": "application/json" }
@@ -130,7 +170,7 @@
       }
     },
     {
-      "name": "04 - List Roles",
+      "name": "05 - List Roles",
       "event": [
         {
           "listen": "test",
@@ -147,7 +187,7 @@
       }
     },
     {
-      "name": "05 - Change User Role",
+      "name": "06 - Change User Role",
       "event": [
         {
           "listen": "test",
@@ -172,7 +212,7 @@
       }
     },
     {
-      "name": "06 - Lock User",
+      "name": "07 - Lock User",
       "event": [
         {
           "listen": "test",
@@ -192,32 +232,6 @@
         "body": {
           "mode": "raw",
           "raw": "{\n  \"status\": \"INACTIVE\"\n}",
-          "options": { "raw": { "language": "json" } }
-        },
-        "url": "{{baseUrl}}/api/users/{{userId}}/status"
-      }
-    },
-    {
-      "name": "07 - Unlock User",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Mở khóa user thành công', function () { pm.response.to.have.status(200); });",
-              "if (pm.response.code === 200) pm.expect(pm.response.json().status).to.eql('ACTIVE');"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "PATCH",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"status\": \"ACTIVE\"\n}",
           "options": { "raw": { "language": "json" } }
         },
         "url": "{{baseUrl}}/api/users/{{userId}}/status"

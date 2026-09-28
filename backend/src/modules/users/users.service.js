@@ -3,7 +3,7 @@ import { pagination, positiveInteger } from '../../common/pagination.js';
 import * as validate from '../auth/auth.validation.js';
 import { createRepository } from './users.repository.js';
 
-const allowedStatuses = new Set(['ACTIVE', 'INACTIVE', 'IN_PROCESS']);
+const filterStatuses = new Set(['ACTIVE', 'INACTIVE']);
 const output = user => ({
   id: user.id,
   email: user.email,
@@ -21,7 +21,7 @@ const scalar = (value, name) => {
   }
   return value;
 };
-const parseStatus = (value, allowed = allowedStatuses) => {
+const parseStatus = (value, allowed = filterStatuses) => {
   if (typeof value !== 'string' || !allowed.has(value)) {
     throw new HttpError(400, 'VALIDATION_ERROR', `status must be one of: ${[...allowed].join(', ')}`);
   }
@@ -73,37 +73,21 @@ export function createService(db, config) {
 
     async updateProfile(actor, idValue, body) {
       const id = positiveInteger(idValue, 'id');
-      if (!isAdmin(actor, config) && actor.id !== id) {
+      if (actor.id !== id) {
         throw new HttpError(403, 'FORBIDDEN', 'You can only update your own account');
       }
-      validate.bodyObject(body, ['fullName', 'email']);
-      if (!Object.hasOwn(body, 'fullName') && !Object.hasOwn(body, 'email')) {
-        throw new HttpError(400, 'VALIDATION_ERROR', 'fullName or email is required');
-      }
-      const changes = {
-        fullName: Object.hasOwn(body, 'fullName') ? validate.fullName(body.fullName) : undefined,
-        email: Object.hasOwn(body, 'email') ? validate.email(body.email) : undefined,
-      };
-      try {
-        return await repository.transaction(async repo => {
-          const current = await repo.findById(id, true);
-          if (!current) throw new HttpError(404, 'USER_NOT_FOUND', 'User not found');
-          if (changes.email !== undefined) {
-            const duplicate = await repo.findByEmail(changes.email);
-            if (duplicate && duplicate.id !== id) throw new HttpError(409, 'EMAIL_EXISTS', 'Email already exists');
-          }
-          const changed = (changes.email !== undefined && changes.email !== current.email)
-            || (changes.fullName !== undefined && changes.fullName !== current.full_name);
-          if (changed) {
-            await repo.updateProfile(id, changes);
-            await repo.audit(actor.id, 'USER_UPDATED', id);
-          }
-          return output(await repo.findById(id));
-        });
-      } catch (error) {
-        if (error.code === '23505') throw new HttpError(409, 'EMAIL_EXISTS', 'Email already exists');
-        throw error;
-      }
+      validate.bodyObject(body, ['fullName']);
+      if (!Object.hasOwn(body, 'fullName')) throw new HttpError(400, 'VALIDATION_ERROR', 'fullName is required');
+      const fullName = validate.fullName(body.fullName);
+      return repository.transaction(async repo => {
+        const current = await repo.findById(id, true);
+        if (!current) throw new HttpError(404, 'USER_NOT_FOUND', 'User not found');
+        if (fullName !== current.full_name) {
+          await repo.updateFullName(id, fullName);
+          await repo.audit(actor.id, 'USER_UPDATED', id);
+        }
+        return output(await repo.findById(id));
+      });
     },
 
     async updateStatus(actor, idValue, body) {
@@ -111,8 +95,8 @@ export function createService(db, config) {
       const id = positiveInteger(idValue, 'id');
       validate.bodyObject(body, ['status']);
       if (!Object.hasOwn(body, 'status')) throw new HttpError(400, 'VALIDATION_ERROR', 'status is required');
-      const status = parseStatus(body.status, new Set(['ACTIVE', 'INACTIVE']));
-      if (actor.id === id && status === 'INACTIVE') {
+      const status = parseStatus(body.status, new Set(['INACTIVE']));
+      if (actor.id === id) {
         throw new HttpError(400, 'SELF_LOCK_FORBIDDEN', 'ADMIN cannot lock the account currently in use');
       }
       return repository.transaction(async repo => {

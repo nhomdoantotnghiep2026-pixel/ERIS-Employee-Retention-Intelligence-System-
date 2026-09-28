@@ -59,6 +59,7 @@ test('User Management API uses the existing users, roles and audit_logs tables',
     assert.equal(result.body.data[0].password_hash, undefined);
     assert.equal(result.body.pagination.total, 1);
     assert.equal((await request('/api/users?status=UNKNOWN', { access: admin })).status, 400);
+    assert.equal((await request('/api/users?status=IN_PROCESS', { access: admin })).status, 400);
     assert.equal((await request('/api/users', { access: staff })).status, 403);
   });
 
@@ -68,17 +69,17 @@ test('User Management API uses the existing users, roles and audit_logs tables',
     assert.equal((await request('/api/users/999', { access: admin })).status, 404);
   });
 
-  await t.test('profile updates validate fields and duplicate email', async () => {
+  await t.test('only the account owner can update fullName', async () => {
     const updated = await request('/api/users/2', {
-      method: 'PATCH', access: staff, body: { fullName: 'Updated Staff', email: 'newstaff@eris.test' },
+      method: 'PATCH', access: staff, body: { fullName: 'Updated Staff' },
     });
     assert.equal(updated.status, 200);
     assert.equal(updated.body.fullName, 'Updated Staff');
     assert.equal((await request('/api/users/2', {
-      method: 'PATCH', access: staff, body: { email: 'other@eris.test' },
-    })).status, 409);
+      method: 'PATCH', access: admin, body: { fullName: 'Admin Must Not Edit This' },
+    })).status, 403);
     assert.equal((await request('/api/users/2', {
-      method: 'PATCH', access: staff, body: { roleId: 2 },
+      method: 'PATCH', access: staff, body: { email: 'changed@eris.test' },
     })).status, 400);
   });
 
@@ -99,6 +100,9 @@ test('User Management API uses the existing users, roles and audit_logs tables',
     })).status, 400);
     assert.equal((await request('/api/users/2/status', {
       method: 'PATCH', access: admin, body: { status: 'IN_PROCESS' },
+    })).status, 400);
+    assert.equal((await request('/api/users/2/status', {
+      method: 'PATCH', access: admin, body: { status: 'ACTIVE' },
     })).status, 400);
     assert.equal((await request('/api/users/2/status', {
       method: 'PATCH', access: admin, body: { status: 'INACTIVE' },

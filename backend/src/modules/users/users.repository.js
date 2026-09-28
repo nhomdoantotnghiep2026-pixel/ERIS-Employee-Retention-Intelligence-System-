@@ -54,15 +54,8 @@ export function createRepository(db) {
       return rows[0];
     },
 
-    async findByEmail(email) {
-      const { rows } = await db.query('SELECT id FROM public.users WHERE lower(btrim(email)) = $1', [email]);
-      return rows[0];
-    },
-
-    async updateProfile(id, { email, fullName }) {
-      await db.query(`UPDATE public.users SET
-        email = COALESCE($2, email), full_name = COALESCE($3, full_name)
-        WHERE id = $1`, [id, email, fullName]);
+    async updateFullName(id, fullName) {
+      await db.query('UPDATE public.users SET full_name = $2 WHERE id = $1', [id, fullName]);
     },
 
     async updateStatus(id, status) {
