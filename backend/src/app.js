@@ -11,8 +11,10 @@ import { createRouter as createUserManagementRouter } from './modules/users/user
 import { resources } from './modules/index.js';
 import { createValidationRouter } from './modules/data-validation/data-validation.routes.js';
 import { createDashboardRouter, createReportsRouter } from './modules/dashboard/dashboard.routes.js';
+import { createDistanceService } from './modules/distance/distance.service.js';
+import { createRouter as createDistanceRouter } from './modules/distance/distance.routes.js';
 
-export function createApp({ db, config, mailer, otpStore }) {
+export function createApp({ db, config, mailer, otpStore, distanceService }) {
   const app = express();
   app.disable('x-powered-by');
   app.use((req, res, next) => {
@@ -43,6 +45,8 @@ export function createApp({ db, config, mailer, otpStore }) {
   app.get(['/api/roles', '/api/v1/user-management/roles'], auth.authenticate, async (req, res) => {
     res.json(await userManagement.roles(req.user));
   });
+  const distance = distanceService ?? createDistanceService(config.routing);
+  app.use(['/api/distance', '/api/v1/distance'], auth.authenticate, auth.authorize('employees'), createDistanceRouter(distance));
   app.use('/api/v1', auth.authenticate);
   for (const resource of resources) {
     app.use(`/api/v1${resource.path}`, auth.authorize(resource.permission), resource.createRouter(db));

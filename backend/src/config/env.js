@@ -52,8 +52,17 @@ export function readConfig(env = process.env) {
   const smtp = { host: env.SMTP_HOST, port: port('SMTP_PORT', 587), secure: boolean('SMTP_SECURE', false),
     user: env.SMTP_USER, password: env.SMTP_PASSWORD, from: env.SMTP_FROM };
   if (Boolean(smtp.user) !== Boolean(smtp.password)) throw new Error('SMTP_USER and SMTP_PASSWORD must be configured together');
+  const routingBaseUrl = env.TOMTOM_BASE_URL || 'https://api.tomtom.com';
+  const routingUrl = new URL(routingBaseUrl);
+  if (!['http:', 'https:'].includes(routingUrl.protocol)) throw new Error('TOMTOM_BASE_URL must be an HTTP(S) URL');
+  const geocodingBaseUrl = env.VIETMAP_BASE_URL || 'https://maps.vietmap.vn';
+  const geocodingUrl = new URL(geocodingBaseUrl);
+  if (!['http:', 'https:'].includes(geocodingUrl.protocol)) throw new Error('VIETMAP_BASE_URL must be an HTTP(S) URL');
   return {
     port: port('PORT', 3000), origin, auth, smtp, redisUrl: env.REDIS_URL || 'redis://127.0.0.1:6379',
+    routing: { apiKey: env.TOMTOM_API_KEY, baseUrl: routingUrl.origin,
+      geocodingApiKey: env.VIETMAP_API_KEY, geocodingBaseUrl: geocodingUrl.origin,
+      timeoutMs: integer('ROUTING_TIMEOUT_MS', 10000, 1000, 30000) },
     jwtSecret: env.JWT_SECRET, initialUserPassword: env.INITIAL_USER_PASSWORD, roles,
     db: { host: env.PGHOST, port: port('PGPORT', 5432), database: env.PGDATABASE,
       user: env.PGUSER, password: env.PGPASSWORD, sslMode, caPath: env.PGSSLROOTCERT },

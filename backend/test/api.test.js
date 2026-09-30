@@ -21,7 +21,12 @@ test('API authentication, permission boundaries and unavailable dependencies', a
     return { rows: [] };
   } };
   db.connect = async () => ({ query: db.query.bind(db), release() {} });
-  const server = createApp({ db, config }).listen(0, '127.0.0.1');
+  const distanceService = { async calculate(body) {
+    assert.deepEqual(body, { homeAddress: 'Home', companyAddress: 'Office' });
+    return { distanceFromHomeKm: 12.75, estimatedDurationMinutes: 30.5, trafficAware: false,
+      travelMode: 'car', provider: 'vietmap-geocoding+tomtom-routing' };
+  } };
+  const server = createApp({ db, config, distanceService }).listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(() => new Promise(resolve => server.close(resolve)));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -45,6 +50,13 @@ test('API authentication, permission boundaries and unavailable dependencies', a
     const response = await fetch(base + '/api/v1/auth/user_register', { method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}' });
     assert.equal(response.status, 403);
+  });
+  await t.test('HR staff can calculate DistanceFromHome through the protected API', async () => {
+    const response = await fetch(base + '/api/v1/distance/calculate', { method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ homeAddress: 'Home', companyAddress: 'Office' }) });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).distanceFromHomeKm, 12.75);
   });
   await t.test('inactive users lose access despite an unexpired token', async () => {
     state.status = 'INACTIVE';
