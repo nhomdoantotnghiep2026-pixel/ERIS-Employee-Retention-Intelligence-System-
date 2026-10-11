@@ -1,0 +1,10 @@
+{
+  "description": "Provides accurate and precise text analysis and correction to ensure clarity and correctness for users seeking improved written communication.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
