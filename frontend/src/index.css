@@ -1,0 +1,159 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+@source './**/*.{js,ts,jsx,tsx}';
+
+@font-face {
+  font-family: 'Inter:Regular';
+  font-style: normal;
+  font-weight: 400;
+  src: url('https://static.figma.com/font/Inter_1') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono:Regular';
+  font-style: normal;
+  font-weight: 400;
+  src: url('https://static.figma.com/font/JetBrainsMono_wght__1') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono:Bold';
+  font-style: normal;
+  font-weight: 700;
+  src: url('https://static.figma.com/font/JetBrainsMono_wght__1') format('woff2');
+}
+
+@theme inline {
+  --color-bg-app: #F4F3F9;
+  --color-bg-surface: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-border-input: #CBD5E1;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748B;
+  --color-brand: #F97316;
+  --color-brand-hover: #EA580C;
+  --color-brand-subtle: #FFF7ED;
+  --color-risk-high: #DC2626;
+  --color-risk-high-bg: #FEF2F2;
+  --color-risk-medium: #D97706;
+  --color-risk-medium-bg: #FFFBEB;
+  --color-risk-low: #16A34A;
+  --color-risk-low-bg: #F0FDF4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: 'Inter', Arial, sans-serif;
+  background-color: #F4F3F9;
+  color: #0F172A;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+a,
+input,
+select {
+  touch-action: manipulation;
+}
+
+button,
+a,
+label[for] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid #F97316;
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+table { border-collapse: separate; border-spacing: 0; width: 100%; }
+
+.eris-content table thead th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.eris-content table tbody tr {
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.eris-content table tbody tr:nth-child(even) {
+  background: rgba(248, 250, 252, 0.55);
+}
+
+.eris-content table tbody tr:hover {
+  background: #fff7ed;
+  box-shadow: inset 3px 0 0 #f97316;
+}
+
+.eris-content table th:first-child,
+.eris-content table td:first-child { padding-left: 20px; }
+.eris-content table th:last-child,
+.eris-content table td:last-child { padding-right: 20px; }
+
+.font-mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+
+/* Existing Figma screens use fixed desktop grids. These scoped rules preserve the
+   dense enterprise layout on large screens and keep every role usable in a narrow
+   browser panel without rewriting each screen. */
+@media (max-width: 1024px) {
+  .eris-content > .grid.grid-cols-4,
+  .eris-content > .grid.grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .eris-content > .grid.grid-cols-3 > .col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .eris-content > .grid.grid-cols-4,
+  .eris-content > .grid.grid-cols-3,
+  .eris-content > .grid.grid-cols-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .eris-content > .grid > .col-span-2 {
+    grid-column: span 1 / span 1;
+  }
+
+  .eris-content .overflow-x-auto table,
+  .eris-content .overflow-auto table {
+    min-width: max(100%, 680px);
+  }
+
+  .eris-content table th:first-child,
+  .eris-content table td:first-child { padding-left: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
