@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { RoleProvider, useRole, type UserRole } from './context/RoleContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { EmployeeProvider } from './context/EmployeeContext';
+import Landing from './screens/Landing';
 import Login from './screens/Login';
 
 // HR
@@ -91,7 +92,7 @@ export default function App() {
         <EmployeeProvider>
         <BrowserRouter>
           <Routes>
-          <Route path="/" element={<RouteFallback />} />
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
 
           {/* HR */}
