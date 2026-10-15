@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 export type Language = 'en' | 'vi';
 
@@ -443,6 +443,34 @@ const vi: Dictionary = {
   yr: 'năm',
   Yes: 'Có',
   No: 'Không',
+  Language: 'Ngôn ngữ',
+  English: 'Tiếng Anh',
+  Vietnamese: 'Tiếng Việt',
+  'Current language': 'Ngôn ngữ hiện tại',
+  'Workforce overview': 'Tổng quan nhân sự',
+  'Good morning': 'Chào buổi sáng',
+  'Here is what needs your attention across employee retention and engagement today.': 'Đây là những nội dung cần bạn chú ý về giữ chân và gắn kết nhân viên hôm nay.',
+  'Review employees': 'Xem danh sách nhân viên',
+  'Employee risk overview': 'Tổng quan rủi ro nhân viên',
+  'Current workforce retention profile': 'Tình hình giữ chân của lực lượng lao động hiện tại',
+  'View analytics': 'Xem phân tích',
+  'Total employees': 'Tổng số nhân viên',
+  'High risk': 'Rủi ro cao',
+  'Medium risk': 'Rủi ro trung bình',
+  'Low risk': 'Rủi ro thấp',
+  'Risk distribution': 'Phân bổ rủi ro',
+  'Employees needing attention': 'Nhân viên cần được quan tâm',
+  'Highest retention risk scores this week': 'Các mức rủi ro giữ chân cao nhất trong tuần',
+  'View all': 'Xem tất cả',
+  'Quick Launch': 'Truy cập nhanh',
+  'Frequently used HR tools': 'Các công cụ nhân sự thường dùng',
+  'Add Employee': 'Thêm nhân viên',
+  'Employee List': 'Danh sách nhân viên',
+  'Risk Review': 'Xem xét rủi ro',
+  Interventions: 'Can thiệp',
+  'Department signals': 'Tín hiệu theo phòng ban',
+  'High-risk ratio by department': 'Tỷ lệ rủi ro cao theo phòng ban',
+  'View interventions': 'Xem các can thiệp',
 };
 
 const dictionaries: Record<Language, Dictionary> = {
@@ -467,8 +495,23 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLanguage = (next: Language) => {
     localStorage.setItem('eris-language', next);
+    document.documentElement.lang = next;
     setLanguageState(next);
   };
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
+  useEffect(() => {
+    const syncLanguage = (event: StorageEvent) => {
+      if (event.key === 'eris-language' && (event.newValue === 'en' || event.newValue === 'vi')) {
+        setLanguageState(event.newValue);
+      }
+    };
+    window.addEventListener('storage', syncLanguage);
+    return () => window.removeEventListener('storage', syncLanguage);
+  }, []);
 
   const value = useMemo<LanguageContextValue>(() => ({
     language,

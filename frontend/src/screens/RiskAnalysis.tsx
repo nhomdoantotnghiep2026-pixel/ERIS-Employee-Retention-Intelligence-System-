@@ -1,10 +1,10 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { Card, RiskBadge, AIAdvisoryBanner, Avatar, Button } from '../components/ui';
 import { contributingFactors } from '../data/mockData';
 import { useEmployees } from '../context/EmployeeContext';
 import { useState } from 'react';
-import { BrainCircuit, ClipboardList, MessageSquare, Sparkles } from 'lucide-react';
+import { ArrowLeft, BrainCircuit, ClipboardList, MessageSquare, Sparkles } from 'lucide-react';
 
 function InfoRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
@@ -18,9 +18,18 @@ function InfoRow({ label, value, highlight }: { label: string; value: string; hi
 export default function RiskAnalysis() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { employees } = useEmployees();
   const [copilotOpen, setCopilotOpen] = useState(false);
   const emp = employees.find(e => e.id === id);
+  const navigationState = location.state as { returnTo?: string; parentReturnTo?: string } | null;
+  const returnTo = navigationState?.returnTo || (id ? `/employees/${id}` : '/employees');
+  const parentReturnTo = navigationState?.parentReturnTo;
+  const returnLabel = returnTo.startsWith('/org-overview')
+    ? 'Back to Organization Overview'
+    : returnTo.startsWith('/attrition-risk')
+      ? 'Back to Attrition Risk'
+      : 'Back to Employee Profile';
 
   if (!emp) {
     return <AppShell breadcrumb={['Employees', 'Risk Analysis', 'Not found']}><Card className="mx-auto max-w-xl p-8 text-center"><h1 className="text-xl font-bold text-slate-900">Employee not found</h1><p className="mt-2 text-sm text-slate-500">Risk analysis cannot be opened because this employee record is unavailable.</p><Button className="mt-6" onClick={() => navigate('/employees')}>Back to employee directory</Button></Card></AppShell>;
@@ -42,6 +51,9 @@ export default function RiskAnalysis() {
 
   return (
     <AppShell breadcrumb={['Employees', emp.name, 'Risk Analysis']}>
+      <button type="button" onClick={() => navigate(returnTo, { state: parentReturnTo ? { returnTo: parentReturnTo } : undefined })} className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-sm font-semibold text-slate-500 transition-colors hover:bg-white hover:text-orange-700 focus-visible:outline-2 focus-visible:outline-orange-500">
+        <ArrowLeft size={17} /> {returnLabel}
+      </button>
       {/* Header */}
       <Card className="mb-4 px-5 py-3">
         <div className="flex items-center justify-between">

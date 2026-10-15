@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { Card, RiskBadge, Button, SectionHeader, Avatar, Input, Select, Pagination, Th, Td } from '../components/ui';
 import { useEmployees } from '../context/EmployeeContext';
@@ -8,16 +8,17 @@ import { useLanguage } from '../context/LanguageContext';
 
 export default function Employees() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useLanguage();
   const { employees } = useEmployees();
-  const [search, setSearch] = useState('');
-  const [dept, setDept] = useState('');
-  const [riskFilter, setRiskFilter] = useState('');
-  const [satisfaction, setSatisfaction] = useState('');
-  const [overtime, setOvertime] = useState('');
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [sortAsc, setSortAsc] = useState(true);
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState(() => searchParams.get('q') || '');
+  const [dept, setDept] = useState(() => searchParams.get('department') || '');
+  const [riskFilter, setRiskFilter] = useState(() => searchParams.get('risk') || '');
+  const [satisfaction, setSatisfaction] = useState(() => searchParams.get('satisfaction') || '');
+  const [overtime, setOvertime] = useState(() => searchParams.get('overtime') || '');
+  const [advancedOpen, setAdvancedOpen] = useState(() => Boolean(searchParams.get('satisfaction') || searchParams.get('overtime')));
+  const [sortAsc, setSortAsc] = useState(() => searchParams.get('sort') !== 'desc');
+  const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('page')) || 1));
   const perPage = 10;
 
   const filtered = employees.filter(e => {
@@ -32,10 +33,34 @@ export default function Employees() {
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
   const depts = [...new Set(employees.map(e => e.department))];
   const hasFilters = Boolean(dept || riskFilter || satisfaction || overtime || search);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams();
+    if (search) nextParams.set('q', search);
+    if (dept) nextParams.set('department', dept);
+    if (riskFilter) nextParams.set('risk', riskFilter);
+    if (satisfaction) nextParams.set('satisfaction', satisfaction);
+    if (overtime) nextParams.set('overtime', overtime);
+    if (!sortAsc) nextParams.set('sort', 'desc');
+    if (page > 1) nextParams.set('page', String(page));
+    setSearchParams(nextParams, { replace: true });
+  }, [search, dept, riskFilter, satisfaction, overtime, sortAsc, page, setSearchParams]);
+
   const clearFilters = () => {
     setSearch(''); setDept(''); setRiskFilter(''); setSatisfaction(''); setOvertime(''); setPage(1);
   };
-  const openEmployee = (id: string) => navigate(`/employees/${id}`);
+  const openEmployee = (id: string) => {
+    const returnParams = new URLSearchParams();
+    if (search) returnParams.set('q', search);
+    if (dept) returnParams.set('department', dept);
+    if (riskFilter) returnParams.set('risk', riskFilter);
+    if (satisfaction) returnParams.set('satisfaction', satisfaction);
+    if (overtime) returnParams.set('overtime', overtime);
+    if (!sortAsc) returnParams.set('sort', 'desc');
+    if (page > 1) returnParams.set('page', String(page));
+    const returnTo = `/employees${returnParams.size ? `?${returnParams.toString()}` : ''}`;
+    navigate(`/employees/${id}`, { state: { returnTo } });
+  };
 
   return (
     <AppShell breadcrumb={['Employees']}>

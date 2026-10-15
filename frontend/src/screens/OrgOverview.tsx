@@ -6,7 +6,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { Download, CalendarDays, TrendingUp, TrendingDown } from 'lucide-react';
+import { Download, CalendarDays, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { demoPdfContent, downloadTextFile } from '../utils/demoActions';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -137,7 +137,27 @@ export default function OrgOverview() {
             <span className="text-[12px] text-gray-400 ml-2">{t('Attrition risk summary by department')}</span>
           </div>
         </div>
-        <table className="w-full table-fixed">
+        <div className="divide-y divide-slate-100 md:hidden">
+          {departments.map(d => {
+            const medium = Math.round(d.employees * 0.25);
+            const low = d.employees - d.highRisk - medium;
+            return (
+              <div key={d.name} className="p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="font-semibold text-slate-900">{t(d.name)}</span>
+                  <span className="shrink-0 text-xs font-medium text-slate-500">{d.employees} {t('Employees').toLowerCase()}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-xl bg-red-50 px-2 py-2"><div className="text-xs text-red-600">{t('High Risk')}</div><div className="mt-0.5 font-semibold text-red-700">{d.highRisk}</div></div>
+                  <div className="rounded-xl bg-amber-50 px-2 py-2"><div className="text-xs text-amber-600">{t('Medium Risk')}</div><div className="mt-0.5 font-semibold text-amber-700">{medium}</div></div>
+                  <div className="rounded-xl bg-emerald-50 px-2 py-2"><div className="text-xs text-emerald-600">{t('Low Risk')}</div><div className="mt-0.5 font-semibold text-emerald-700">{low}</div></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="hidden overflow-x-auto overscroll-x-contain md:block">
+          <table className="w-full min-w-[760px] table-fixed">
           <colgroup>
             <col className="w-[20%]" />
             <col className="w-[12%]" />
@@ -181,7 +201,8 @@ export default function OrgOverview() {
               );
             })}
           </tbody>
-        </table>
+          </table>
+        </div>
       </Card>
 
       {/* Employees Requiring Attention */}
@@ -189,51 +210,70 @@ export default function OrgOverview() {
         <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
           <span className="text-[14px] font-medium text-gray-800">{t('Employees Requiring Attention')}</span>
         </div>
-        <table className="w-full table-fixed">
+        <div className="divide-y divide-slate-100 md:hidden">
+          {highRiskEmployees.map(emp => (
+            <button
+              key={emp.id}
+              className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-orange-50/60 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-orange-500"
+              onClick={() => navigate(`/employees/${emp.id}/risk`, { state: { returnTo: '/org-overview' } })}
+            >
+              <Avatar initials={emp.initials} size="md" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-slate-900">{emp.name}</span>
+                <span className="mt-0.5 block truncate text-xs text-slate-500">{t(emp.role)} · {t(emp.department)}</span>
+                <span className="mt-2 flex flex-wrap items-center gap-2"><RiskBadge level={emp.riskLevel} /><span className="font-mono text-xs font-bold text-red-600">{emp.riskScore}%</span><span className="text-xs text-slate-400">{emp.lastAnalysis}</span></span>
+              </span>
+              <ChevronRight size={18} className="shrink-0 text-slate-400" />
+            </button>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto overscroll-x-contain md:block">
+          <table className="w-full min-w-[980px] table-fixed">
           <colgroup>
-            <col className="w-[21%]" />
-            <col className="w-[12%]" />
-            <col className="w-[18%]" />
-            <col className="w-[10%]" />
-            <col className="w-[8%]" />
-            <col className="w-[13%]" />
-            <col className="w-[8%]" />
-            <col className="w-[10%]" />
+            <col className="w-[190px]" />
+            <col className="w-[130px]" />
+            <col className="w-[160px]" />
+            <col className="w-[120px]" />
+            <col className="w-[80px]" />
+            <col className="w-[120px]" />
+            <col className="w-[110px]" />
+            <col className="w-[120px]" />
           </colgroup>
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
               {['Employee', 'Department', 'Role', 'Risk', 'Score', 'Top Factor', 'Last Analysis', 'Action'].map(h => (
-                <th key={h} className="px-3 py-2.5 text-left text-[12px] font-medium text-gray-500 uppercase tracking-wide">{t(h)}</th>
+                <th key={h} className="whitespace-nowrap px-3 py-2.5 text-left text-[12px] font-medium text-gray-500 uppercase tracking-wide">{t(h)}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {highRiskEmployees.map(emp => (
               <tr key={emp.id} className="hover:bg-gray-50/60 transition-colors">
-                <td className="px-3 h-[44px]">
-                  <div className="flex items-center gap-2">
+                <td className="px-3 py-2.5 align-middle">
+                  <div className="flex min-w-0 items-center gap-2">
                     <Avatar initials={emp.initials} size="sm" />
-                    <div>
-                      <div className="text-[13px] font-medium text-gray-800">{emp.name}</div>
+                    <div className="min-w-0">
+                      <div className="truncate text-[13px] font-medium text-gray-800" title={emp.name}>{emp.name}</div>
                       <div className="text-[11px] text-gray-400">{emp.employeeId}</div>
                     </div>
                   </div>
                 </td>
-                <td className="px-3 h-[44px] text-[13px] text-gray-600">{t(emp.department)}</td>
-                <td className="px-3 h-[44px] text-[13px] text-gray-600">{t(emp.role)}</td>
-                <td className="px-3 h-[44px]"><RiskBadge level={emp.riskLevel} /></td>
-                <td className="px-3 h-[44px]"><span className="text-[13px] font-semibold text-red-600">{emp.riskScore}%</span></td>
-                <td className="px-3 h-[44px] text-[13px] text-gray-600">{t('Overtime')}</td>
-                <td className="px-3 h-[44px] text-[12px] text-gray-400">{emp.lastAnalysis}</td>
-                <td className="px-3 h-[44px]">
-                  <button className="text-[13px] text-[#F97316] hover:underline" onClick={(e) => { e.stopPropagation(); navigate(`/employees/${emp.id}/risk`); }}>
+                <td className="px-3 py-2.5 align-middle text-[13px] text-gray-600">{t(emp.department)}</td>
+                <td className="px-3 py-2.5 align-middle text-[13px] leading-5 text-gray-600">{t(emp.role)}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 align-middle"><RiskBadge level={emp.riskLevel} /></td>
+                <td className="whitespace-nowrap px-3 py-2.5 align-middle"><span className="text-[13px] font-semibold text-red-600">{emp.riskScore}%</span></td>
+                <td className="whitespace-nowrap px-3 py-2.5 align-middle text-[13px] text-gray-600">{t('Overtime')}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 align-middle text-[12px] text-gray-400">{emp.lastAnalysis}</td>
+                <td className="px-3 py-2.5 align-middle">
+                  <button className="whitespace-nowrap text-[13px] font-medium text-[#F97316] hover:underline" onClick={(e) => { e.stopPropagation(); navigate(`/employees/${emp.id}/risk`, { state: { returnTo: '/org-overview' } }); }}>
                     {t('View analysis')}
                   </button>
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       </Card>
 
       <AIAdvisoryBanner />

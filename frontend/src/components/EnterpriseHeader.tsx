@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, CheckCheck, ChevronDown, HelpCircle, LogOut, PanelLeft } from 'lucide-react';
+import { Bell, Check, CheckCheck, ChevronDown, HelpCircle, Languages, LogOut, PanelLeft } from 'lucide-react';
 import { useRole, type UserRole } from '../context/RoleContext';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -16,10 +16,10 @@ const notices: Record<UserRole, { title: string; detail: string; to: string }[]>
 
 export function EnterpriseHeader({ breadcrumb, sidebarOpen, toggleSidebar, links }: Props) {
   const { user, signOut } = useRole();
-  const { language, toggleLanguage, t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [panel, setPanel] = useState<'notifications' | 'help' | 'account' | null>(null);
+  const [panel, setPanel] = useState<'language' | 'notifications' | 'help' | 'account' | null>(null);
   const [read, setRead] = useState<string[]>(() => { try { return JSON.parse(sessionStorage.getItem('eris-notifications-read') || '[]'); } catch { return []; } });
   const root = useRef<HTMLElement>(null);
   const pages = links[user.role].flatMap(group => group.items);
@@ -51,7 +51,48 @@ export function EnterpriseHeader({ breadcrumb, sidebarOpen, toggleSidebar, links
     <header ref={root} className="sticky top-0 z-30 flex min-h-[58px] shrink-0 items-center gap-2 bg-gradient-to-r from-[#f59b32] via-[#f47b2c] to-[#ef5b2a] px-3 py-1.5 text-white shadow-[0_4px_16px_rgba(234,88,12,0.16)] sm:px-6">
       <button className={iconButton + ' lg:hidden'} aria-label={sidebarOpen ? t('Collapse sidebar') : t('Expand sidebar')} aria-expanded={sidebarOpen} onClick={toggleSidebar}><PanelLeft size={21} /></button>
       <h1 className="min-w-0 flex-1 truncate text-lg font-bold tracking-[-0.01em] sm:text-xl">{title}</h1>
-      <button type="button" onClick={toggleLanguage} className="flex h-10 min-w-10 items-center justify-center rounded-full bg-white/15 px-3 text-xs font-bold hover:bg-white/25" aria-label={language === 'en' ? 'Switch to Vietnamese' : 'Switch to English'}>{language === 'en' ? 'VI' : 'EN'}</button>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setPanel(panel === 'language' ? null : 'language')}
+          className="flex h-11 items-center justify-center gap-2 rounded-full bg-white/15 px-3 text-xs font-bold text-white transition-all hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-4"
+          aria-label={`${t('Language')}: ${language === 'vi' ? t('Vietnamese') : t('English')}`}
+          aria-expanded={panel === 'language'}
+          aria-haspopup="menu"
+        >
+          <Languages size={18} />
+          <span>{language.toUpperCase()}</span>
+          <ChevronDown size={13} className={`hidden transition-transform duration-200 sm:block ${panel === 'language' ? 'rotate-180' : ''}`} />
+        </button>
+        {panel === 'language' && (
+          <section role="menu" aria-label={t('Language')} className="absolute right-0 top-[calc(100%+10px)] w-[230px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 text-slate-800 shadow-2xl shadow-slate-900/15">
+            <div className="px-3 pb-2 pt-1">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">{t('Language')}</p>
+              <p className="mt-1 text-[11px] text-slate-500">{t('Current language')}: {language === 'vi' ? 'Tiếng Việt' : 'English'}</p>
+            </div>
+            {([
+              { code: 'vi', short: 'VI', label: 'Tiếng Việt', detail: 'Vietnamese' },
+              { code: 'en', short: 'EN', label: 'English', detail: 'English' },
+            ] as const).map(option => {
+              const selected = language === option.code;
+              return (
+                <button
+                  key={option.code}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={selected}
+                  onClick={() => { setLanguage(option.code); setPanel(null); }}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all ${selected ? 'bg-orange-50 text-orange-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                >
+                  <span className={`grid h-9 w-9 place-items-center rounded-full text-[11px] font-bold ${selected ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{option.short}</span>
+                  <span className="min-w-0 flex-1"><b className="block text-sm">{option.label}</b><span className="block text-[11px] text-slate-400">{option.detail}</span></span>
+                  <span className={`grid h-6 w-6 place-items-center rounded-full ${selected ? 'bg-orange-100 text-orange-600' : 'text-transparent'}`}><Check size={14} strokeWidth={3} /></span>
+                </button>
+              );
+            })}
+          </section>
+        )}
+      </div>
       <div className="relative">
         <button className={iconButton} aria-label={`${t('Notifications')}, ${unread} unread`} onClick={() => setPanel(panel === 'notifications' ? null : 'notifications')}><Bell size={20} />{unread > 0 && <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-white px-1 text-[9px] font-bold text-orange-600">{unread}</span>}</button>
         {panel === 'notifications' && <section className={popover}><div className="flex items-center justify-between border-b border-slate-100 p-4"><div><h2 className="font-bold">{t('Notifications')}</h2><p className="text-xs text-slate-500">{t('Your latest updates')}</p></div><button onClick={() => markRead(notificationItems.map((_, i) => key(i)))} className="flex h-9 w-9 items-center justify-center rounded-full text-orange-600 hover:bg-orange-50" aria-label={t('Mark all as read')}><CheckCheck size={18} /></button></div>{notificationItems.map((notice, i) => <button key={notice.to} onClick={() => { markRead([key(i)]); go(notice.to); }} className="flex w-full gap-3 border-b border-slate-100 p-4 text-left hover:bg-orange-50"><span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${read.includes(key(i)) ? 'bg-slate-200' : 'bg-orange-500'}`} /><span><b className="block text-sm">{t(notice.title)}</b><span className="mt-1 block text-xs leading-5 text-slate-500">{t(notice.detail)}</span></span></button>)}</section>}

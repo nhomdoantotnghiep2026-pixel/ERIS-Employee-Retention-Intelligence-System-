@@ -8,7 +8,8 @@ import {
   BarChart2, ServerCog, Network, UserPlus, Target, MessageSquare,
   FileBarChart2, Workflow, Sliders, Table2, BrainCircuit,
   TrendingUp, History, ScrollText, Zap, ClipboardList,
-  HeartPulse, Download, MonitorCheck, KeyRound, X, Leaf, ChevronLeft, Upload, RefreshCw
+  HeartPulse, Download, MonitorCheck, KeyRound, X, Leaf, ChevronLeft, Upload, RefreshCw,
+  CalendarClock, WalletCards, ClipboardCheck, DoorOpen
 } from 'lucide-react';
 import { useRole, type UserRole } from '../context/RoleContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -33,6 +34,7 @@ const NAV_BY_ROLE: Record<UserRole, NavGroup[]> = {
         { label: 'Add Employee', icon: UserPlus, to: '/employees/new' },
         { label: 'Import Employees', icon: Upload, to: '/employees/import' },
         { label: 'Bulk Update', icon: RefreshCw, to: '/employees/bulk-update' },
+        { label: 'Employee Requests', icon: ClipboardList, to: '/employee-requests' },
         { label: 'Org Chart', icon: Network, to: '/org-chart' },
         { label: 'Onboarding & Offboarding', icon: UserPlus, to: '/onboarding' },
       ],
@@ -69,6 +71,10 @@ const NAV_BY_ROLE: Record<UserRole, NavGroup[]> = {
       group: 'Self Service',
       items: [
         { label: 'My Attendance', icon: Activity, to: '/my-attendance' },
+        { label: 'Requests & Approvals', icon: CalendarClock, to: '/my-requests' },
+        { label: 'My Payslips', icon: WalletCards, to: '/my-payroll' },
+        { label: 'Goals & Review', icon: ClipboardCheck, to: '/my-performance' },
+        { label: 'Offboarding', icon: DoorOpen, to: '/my-offboarding' },
         { label: 'My Surveys', icon: HeartPulse, to: '/my-surveys' },
       ],
     },
@@ -141,7 +147,7 @@ function SidebarLink({ to, icon: Icon, label, onNavigate, collapsed = false, nes
       onClick={onNavigate}
       title={collapsed ? t(label) : undefined}
       aria-label={collapsed ? t(label) : undefined}
-      className={`flex items-center transition-all duration-300 ${nested && !collapsed ? 'ml-5 min-h-10 gap-3 text-[13px]' : `min-h-12 text-[15px] ${collapsed ? 'mx-auto h-12 w-12 justify-center gap-0 rounded-2xl' : 'gap-4'}`} ${
+      className={`flex items-center transition-all duration-300 ${nested && !collapsed ? 'ml-5 min-h-10 gap-3 text-[15px]' : `min-h-12 text-[16px] ${collapsed ? 'mx-auto h-12 w-12 justify-center gap-0 rounded-2xl' : 'gap-4'}`} ${
         isActive
           ? `${collapsed ? 'bg-[#f47721] px-0 text-white shadow-[0_7px_18px_rgba(244,119,33,0.24)]' : nested ? 'rounded-full bg-orange-50 px-4 text-orange-700' : '-ml-3 rounded-r-full bg-[#f47721] pl-8 pr-4 text-white shadow-[0_7px_18px_rgba(244,119,33,0.22)]'} font-bold`
           : `${collapsed ? 'px-0 text-[#71809d] hover:bg-orange-50 hover:text-orange-700' : nested ? 'rounded-full px-4' : 'rounded-r-full px-5'} font-normal text-[#64748b] hover:bg-orange-50 hover:text-orange-700`
@@ -217,7 +223,7 @@ function Sidebar({ onNavigate, collapsed, onToggle }: { onNavigate?: () => void;
           return <button key={groupKey} type="button" title={t(group.group)} aria-label={t(group.group)} onClick={() => { setOpenGroups(groups => groups.includes(groupKey) ? groups : [...groups, groupKey]); onToggle(); }} className={`mx-auto flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-200 ${groupActive ? 'bg-[#f47721] text-white shadow-[0_7px_18px_rgba(244,119,33,0.24)]' : 'text-[#71809d] hover:bg-orange-50 hover:text-orange-700'}`}><GroupIcon size={23} strokeWidth={1.8} /></button>;
         }) : visibleGroups.map((group, index) => {
           const groupKey = group.group || `group-${index}`;
-          const expanded = Boolean(navQuery) || openGroups.includes(groupKey) || activeGroup === group.group;
+          const expanded = Boolean(navQuery) || openGroups.includes(groupKey);
           if (!group.group || group.items.length === 1) return group.items.map(item => <SidebarLink key={item.to} {...item} onNavigate={onNavigate} />);
           const GroupIcon = group.items[0].icon;
           const groupActive = activeGroup === group.group;
@@ -227,7 +233,7 @@ function Sidebar({ onNavigate, collapsed, onToggle }: { onNavigate?: () => void;
               <span className="min-w-0 flex-1 truncate">{t(group.group)}</span>
               <ChevronDown size={16} className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
             </button>
-            <div className={`grid transition-[grid-template-rows,opacity] duration-200 ${expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}><div className="min-h-0 overflow-hidden space-y-0.5 pb-1">{group.items.map(item => <SidebarLink key={item.to} {...item} nested onNavigate={onNavigate} />)}</div></div>
+            <div aria-hidden={!expanded} inert={!expanded} className={`grid transition-[grid-template-rows,opacity] duration-200 ${expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}><div className="min-h-0 overflow-hidden space-y-0.5 pb-1">{group.items.map(item => <SidebarLink key={item.to} {...item} nested onNavigate={onNavigate} />)}</div></div>
           </div>;
         })}
         {!visibleItems.length && <p className="px-5 py-8 text-center text-sm text-slate-400">{t('No menu items found')}</p>}

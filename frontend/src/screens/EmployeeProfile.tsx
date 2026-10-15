@@ -1,9 +1,9 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { Card, RiskBadge, Button, Tabs, Avatar, AIAdvisoryBanner } from '../components/ui';
 import { useEmployees } from '../context/EmployeeContext';
 import { useState } from 'react';
-import { ArrowRight, Calendar, FileText, ArrowUpCircle, Clock, CheckCircle, AlertCircle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Calendar, FileText, ArrowUpCircle, Clock, CheckCircle, AlertCircle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 function InfoRow({ label, value, valueClass = '' }: { label: string; value: string; valueClass?: string }) {
   return (
@@ -55,10 +55,17 @@ function ScoreGrid({ score, max, color }: { score: number; max: number; color: s
 export default function EmployeeProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [tab, setTab] = useState('Overview');
   const [actionMessage, setActionMessage] = useState('');
   const { employees } = useEmployees();
   const emp = employees.find(e => e.id === id);
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo || '/employees';
+  const returnLabel = returnTo.startsWith('/dashboard')
+    ? 'Back to Dashboard'
+    : returnTo.startsWith('/attrition-risk')
+      ? 'Back to Attrition Risk'
+      : 'Back to Employee Directory';
 
   if (!emp) {
     return <AppShell breadcrumb={['Employees', 'Not found']}><Card className="mx-auto max-w-xl p-8 text-center"><h1 className="text-xl font-bold text-slate-900">Employee not found</h1><p className="mt-2 text-sm text-slate-500">This employee record does not exist or is no longer available.</p><Button className="mt-6" onClick={() => navigate('/employees')}>Back to employee directory</Button></Card></AppShell>;
@@ -70,6 +77,9 @@ export default function EmployeeProfile() {
 
   return (
     <AppShell breadcrumb={['Employees', emp.name]}>
+      <button type="button" onClick={() => navigate(returnTo)} className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-sm font-semibold text-slate-500 transition-colors hover:bg-white hover:text-orange-700 focus-visible:outline-2 focus-visible:outline-orange-500">
+        <ArrowLeft size={17} /> {returnLabel}
+      </button>
       {/* Profile Header */}
       <Card className="mb-4 px-5 py-4">
         <div className="flex items-center justify-between">
@@ -154,7 +164,7 @@ export default function EmployeeProfile() {
               </div>
               <div className="pt-3 border-t border-gray-100">
                 <div className="text-[12px] text-gray-400 mb-2">Last analyzed: {emp.lastAnalysis}</div>
-                <Button variant="primary" size="sm" disabled={!isAnalyzed} className="w-full justify-center" onClick={() => navigate(`/employees/${emp.id}/risk`)}>
+                <Button variant="primary" size="sm" disabled={!isAnalyzed} className="w-full justify-center" onClick={() => navigate(`/employees/${emp.id}/risk`, { state: { returnTo: `${location.pathname}${location.search}`, parentReturnTo: returnTo } })}>
                   View Risk Analysis <ArrowRight size={12} />
                 </Button>
               </div>

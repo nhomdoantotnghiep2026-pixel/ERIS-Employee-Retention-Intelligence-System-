@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
+  ArrowLeft,
   ChevronDown,
   Eye,
   EyeOff,
@@ -154,15 +155,25 @@ export default function Login() {
 
       <section className="relative z-10 flex min-h-dvh w-full items-center px-5 py-8 sm:px-8 lg:w-[69%] lg:px-12 xl:w-[66%]">
         <div className="mx-auto w-full max-w-[590px]">
-          <div className="mb-7 flex items-center justify-center rounded-[26px] border border-white bg-white/95 px-7 py-5 shadow-[0_18px_55px_rgba(31,41,55,0.10)] sm:px-10">
-            <ErisMark />
-            <div className="ml-4 border-l border-slate-200 pl-4">
+          <Link
+            to="/"
+            aria-label="Quay về trang giới thiệu ERIS"
+            className="group relative mb-7 flex items-center justify-center overflow-hidden rounded-[26px] border border-white bg-white/95 px-7 py-5 shadow-[0_18px_55px_rgba(31,41,55,0.10)] transition-all duration-300 hover:-translate-y-1 hover:border-orange-100 hover:shadow-[0_24px_65px_rgba(234,88,12,0.16)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200 sm:px-10"
+          >
+            <span className="absolute left-4 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-orange-50 text-orange-700 opacity-70 transition-all duration-300 group-hover:-translate-x-1 group-hover:opacity-100 group-focus-visible:-translate-x-1 group-focus-visible:opacity-100 sm:left-6" aria-hidden="true">
+              <ArrowLeft size={15} />
+            </span>
+            <span className="transition-transform duration-300 group-hover:scale-[1.03]">
+              <ErisMark />
+            </span>
+            <div className="ml-4 border-l border-slate-200 pl-4 text-left">
               <div className="text-2xl font-bold tracking-[0.12em] text-slate-800">ERIS</div>
               <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-400 sm:text-[11px]">
                 Employee Retention Intelligence System
               </div>
             </div>
-          </div>
+            <span className="absolute inset-x-12 bottom-0 h-0.5 origin-center scale-x-0 bg-gradient-to-r from-transparent via-orange-500 to-transparent transition-transform duration-300 group-hover:scale-x-100 group-focus-visible:scale-x-100" aria-hidden="true" />
+          </Link>
 
           <div className="px-1 sm:px-8">
             <div className="mb-5 text-center">

@@ -50,7 +50,8 @@ html, body {
   font-family: 'Inter', Arial, sans-serif;
   background-color: #F4F3F9;
   color: #0F172A;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -84,6 +85,28 @@ select:focus-visible,
 
 table { border-collapse: separate; border-spacing: 0; width: 100%; }
 
+/* Keep everyday copy comfortably readable without changing the display scale
+   of headings, metrics, and other intentionally compact controls. */
+.eris-content {
+  font-size: 15px;
+}
+
+.eris-content .text-sm {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.eris-content .text-xs {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+aside[aria-label="Main navigation"] nav > div > button {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #52627a;
+}
+
 .eris-content table thead th {
   background: #f8fafc;
   color: #475569;
@@ -112,6 +135,23 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
 .eris-content table td:last-child { padding-right: 20px; }
 
 .font-mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+
+@keyframes landing-dot-drift {
+  from { background-position: 0 0; }
+  to { background-position: 36px 36px; }
+}
+
+.landing-dot-grid {
+  background-image: radial-gradient(circle, rgba(148, 163, 184, 0.22) 1.15px, transparent 1.15px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,0.55) 58%, transparent 100%);
+  animation: landing-dot-drift 9s linear infinite;
+}
+
+.landing-marquee-mask {
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
 
 /* Existing Figma screens use fixed desktop grids. These scoped rules preserve the
    dense enterprise layout on large screens and keep every role usable in a narrow

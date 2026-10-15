@@ -79,7 +79,7 @@ export default function Reports() {
                 <td className="px-3 h-[44px] text-[13px] text-gray-500">{r.owner}</td>
                 <td className="px-3 h-[44px]">
                   <div className="flex items-center gap-1">
-                    <Button variant="secondary" size="sm" onClick={() => navigate(`/reports/${r.id}`)}>
+                    <Button variant="secondary" size="sm" onClick={() => navigate(`/reports/${r.id}`, { state: { returnTo: '/reports' } })}>
                       <Eye size={12} /> View
                     </Button>
                     <Button variant="ghost" size="sm" aria-label={`Regenerate ${r.name}`} onClick={() => setConfirm({

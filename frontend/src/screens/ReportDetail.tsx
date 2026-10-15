@@ -1,17 +1,19 @@
 import { AppShell } from '../components/AppShell';
 import { Card, Button, RiskBadge, Avatar, AIAdvisoryBanner } from '../components/ui';
 import { departments } from '../data/mockData';
-import { Download, Printer, FileDown } from 'lucide-react';
+import { ArrowLeft, Download, Printer, FileDown } from 'lucide-react';
 import { demoPdfContent, downloadTextFile, slugify, toCsv } from '../utils/demoActions';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useEmployees } from '../context/EmployeeContext';
 import { loadReports } from '../utils/reportStore';
 
 export default function ReportDetail() {
   const { reportId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { employees } = useEmployees();
   const report = loadReports().find(item => item.id === reportId);
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo || '/reports';
 
   if (!report) {
     return <AppShell breadcrumb={['Reports', 'Not found']}><Card className="mx-auto max-w-xl p-8 text-center"><h1 className="text-xl font-bold text-slate-900">Report not found</h1><p className="mt-2 text-sm text-slate-500">This report does not exist or is no longer available in the current session.</p><Button className="mt-6" onClick={() => navigate('/reports')}>Back to reports</Button></Card></AppShell>;
@@ -31,6 +33,9 @@ export default function ReportDetail() {
 
   return (
     <AppShell breadcrumb={['Reports', report.name]}>
+      <button type="button" onClick={() => navigate(returnTo)} className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-sm font-semibold text-slate-500 transition-colors hover:bg-white hover:text-orange-700 focus-visible:outline-2 focus-visible:outline-orange-500">
+        <ArrowLeft size={17} /> Back to Report Library
+      </button>
       <div className="flex items-start justify-between mb-4">
         <div>
           <h1 className="text-[22px] font-semibold text-gray-900">{report.name}</h1>

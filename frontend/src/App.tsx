@@ -24,6 +24,7 @@ import Reports from './screens/Reports';
 import ReportDetail from './screens/ReportDetail';
 import EmployeeDataManagement from './screens/EmployeeDataManagement';
 import EmployeePortal from './screens/EmployeePortal';
+import EmployeeRequests from './screens/EmployeeRequests';
 
 // Data / AI Analyst
 import DataOverview from './screens/DataOverview';
@@ -50,12 +51,12 @@ import { hasRoutePermission, RBAC_UPDATED_EVENT } from './utils/rbacAccess';
 const ROLE_ACCESS: Record<UserRole, string[]> = {
   'HR': [
     '/dashboard', '/org-overview', '/org-chart', '/onboarding', '/workforce-risk',
-    '/employees', '/attrition-risk', '/interventions', '/engagement',
+    '/employees', '/employee-requests', '/attrition-risk', '/interventions', '/engagement',
     '/executive-reports', '/reports',
   ],
   'Data / AI Analyst': ['/data-overview', '/data', '/import', '/preparation', '/schema', '/data-pipelines', '/model', '/ai-config', '/model/eval', '/model-performance', '/feature-importance', '/model-history', '/audit-logs'],
   'System Administrator': ['/admin-overview', '/users', '/roles', '/rbac', '/system', '/activity', '/system-health'],
-  'Employee / ESS': ['/employee-dashboard', '/my-profile', '/my-attendance', '/my-surveys'],
+  'Employee / ESS': ['/employee-dashboard', '/my-profile', '/my-attendance', '/my-requests', '/my-payroll', '/my-performance', '/my-offboarding', '/my-surveys'],
 };
 
 const ROLE_HOME: Record<UserRole, string> = {
@@ -113,6 +114,7 @@ export default function App() {
           <Route path="/employees/bulk-update" element={<RoleGuard><EmployeeDataManagement mode="bulk" /></RoleGuard>} />
           <Route path="/employees/:id" element={<RoleGuard><EmployeeProfile /></RoleGuard>} />
           <Route path="/employees/:id/risk" element={<RoleGuard><RiskAnalysis /></RoleGuard>} />
+          <Route path="/employee-requests" element={<RoleGuard><EmployeeRequests /></RoleGuard>} />
           <Route path="/reports" element={<RoleGuard><Reports /></RoleGuard>} />
           <Route path="/reports/:reportId" element={<RoleGuard><ReportDetail /></RoleGuard>} />
 
@@ -120,6 +122,10 @@ export default function App() {
           <Route path="/employee-dashboard" element={<RoleGuard><EmployeePortal mode="dashboard" /></RoleGuard>} />
           <Route path="/my-profile" element={<RoleGuard><EmployeePortal mode="profile" /></RoleGuard>} />
           <Route path="/my-attendance" element={<RoleGuard><EmployeePortal mode="attendance" /></RoleGuard>} />
+          <Route path="/my-requests" element={<RoleGuard><EmployeePortal mode="requests" /></RoleGuard>} />
+          <Route path="/my-payroll" element={<RoleGuard><EmployeePortal mode="payroll" /></RoleGuard>} />
+          <Route path="/my-performance" element={<RoleGuard><EmployeePortal mode="performance" /></RoleGuard>} />
+          <Route path="/my-offboarding" element={<RoleGuard><EmployeePortal mode="offboarding" /></RoleGuard>} />
           <Route path="/my-surveys" element={<RoleGuard><EmployeePortal mode="surveys" /></RoleGuard>} />
 
           {/* Data / AI Analyst */}
