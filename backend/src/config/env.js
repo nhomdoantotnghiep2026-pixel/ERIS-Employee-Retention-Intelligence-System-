@@ -57,11 +57,21 @@ export function readConfig(env = process.env) {
   const geocodingBaseUrl = env.VIETMAP_BASE_URL || 'https://maps.vietmap.vn';
   const geocodingUrl = new URL(geocodingBaseUrl);
   if (!['http:', 'https:'].includes(geocodingUrl.protocol)) throw new Error('VIETMAP_BASE_URL must be an HTTP(S) URL');
+  const decimal = (name, fallback, min, max) => {
+    const value = Number(env[name] ?? fallback);
+    if (!Number.isFinite(value) || value < min || value > max) throw new Error(`Invalid ${name}`);
+    return value;
+  };
   return {
     port: port('PORT', 3000), origin, auth, smtp, redisUrl: env.REDIS_URL || 'redis://127.0.0.1:6379',
     routing: { apiKey: env.TOMTOM_API_KEY, baseUrl: routingUrl.origin,
       geocodingApiKey: env.VIETMAP_API_KEY, geocodingBaseUrl: geocodingUrl.origin,
-      timeoutMs: integer('ROUTING_TIMEOUT_MS', 10000, 1000, 30000) },
+      timeoutMs: integer('ROUTING_TIMEOUT_MS', 10000, 1000, 30000),
+      company: {
+        latitude: decimal('COMPANY_LATITUDE', 10.841158444047021, -90, 90),
+        longitude: decimal('COMPANY_LONGITUDE', 106.81020893790844, -180, 180),
+        label: (env.COMPANY_LOCATION_LABEL || 'FPT University HCMC').trim(),
+      } },
     jwtSecret: env.JWT_SECRET, initialUserPassword: env.INITIAL_USER_PASSWORD, roles,
     db: { host: env.PGHOST, port: port('PGPORT', 5432), database: env.PGDATABASE,
       user: env.PGUSER, password: env.PGPASSWORD, sslMode, caPath: env.PGSSLROOTCERT },

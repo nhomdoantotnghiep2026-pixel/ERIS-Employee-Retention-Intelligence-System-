@@ -6,6 +6,7 @@ export const permissions = Object.freeze({
   models: ['staff'],
   admin: ['admin'],
   validation: ['staff'],
+  distanceImport: ['admin', 'staff'],
 });
 
 export function hasPermission(roleName, group, roleNames) {

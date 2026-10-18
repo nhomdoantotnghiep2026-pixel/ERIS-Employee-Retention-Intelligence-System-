@@ -1,39 +1,137 @@
 {
   "info": {
     "name": "ERIS DistanceFromHome API",
-    "description": "Geocode Vietnamese addresses with Vietmap and calculate a stable traffic-free route with TomTom.",
+    "description": "Search and confirm the employee home with Vietmap, then calculate a traffic-free TomTom route to the fixed FPT University HCMC company location. Use confirmed coordinates when Vietmap cannot resolve the home.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000" },
-    { "key": "accessToken", "value": "" }
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "homeRefId",
+      "value": ""
+    },
+    {
+      "key": "homeAddress",
+      "value": "71/26A Lãnh Binh Thắng, Phường 8, Quận 11, Hồ Chí Minh"
+    }
   ],
   "item": [
     {
       "name": "01 - Login",
-      "event": [{ "listen": "test", "script": { "exec": [
-        "const body = pm.response.json();",
-        "pm.collectionVariables.set('accessToken', body.accessToken || body.access_token || '');"
-      ] } }],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('accessToken', body.accessToken || body.access_token || '');"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": { "mode": "raw", "raw": "{\n  \"email\": \"hr@example.com\",\n  \"password\": \"YourPassword123!\"\n}", "options": { "raw": { "language": "json" } } },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"hr@example.com\",\n  \"password\": \"YourPassword123!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
         "url": "{{baseUrl}}/api/auth/login"
       }
     },
     {
-      "name": "02 - Calculate DistanceFromHome",
+      "name": "02 - Search And Confirm Home",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('Vietmap returned choices', () => pm.expect(body.places).to.be.an('array').and.not.empty);",
+              "console.log('Copy the correct home refId to the homeRefId collection variable:', body.places);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/distance/places?query={{homeAddress}}"
+      }
+    },
+    {
+      "name": "03 - Calculate To Fixed Company With Home RefId",
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"homeAddress\": \"71/26A Lãnh Binh Thắng, TP. Hồ Chí Minh\",\n  \"companyAddress\": \"FPT University, TP. Hồ Chí Minh\"\n}",
-          "options": { "raw": { "language": "json" } }
+          "raw": "{\n  \"home\": {\n    \"refId\": \"{{homeRefId}}\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/v1/distance/calculate"
+      }
+    },
+    {
+      "name": "04 - Calculate To Fixed Company With Home Coordinates",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"home\": {\n    \"latitude\": 10.77,\n    \"longitude\": 106.67,\n    \"label\": \"Confirmed home address\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "url": "{{baseUrl}}/api/v1/distance/calculate"
       }

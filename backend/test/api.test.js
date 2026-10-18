@@ -51,6 +51,19 @@ test('API authentication, permission boundaries and unavailable dependencies', a
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}' });
     assert.equal(response.status, 403);
   });
+  await t.test('CSV import demo serves external assets and preview requires an allowed authenticated role', async () => {
+    const html = await (await fetch(base + '/distance-import-demo')).text();
+    assert.match(html, /<script src="\/distance-import-demo\.js" defer>/);
+    assert.equal((await fetch(base + '/distance-import-demo.js')).status, 200);
+    assert.equal((await fetch(base + '/distance-import-demo.css')).status, 200);
+    const path = base + '/api/v1/distance/imports/preview';
+    const body = JSON.stringify({ csv: 'employeeId,houseNumber,street,ward,district,city\nE1,1,Test,Test,,Test\n' });
+    assert.equal((await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })).status, 401);
+    state.role = 'ADMIN';
+    const result = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body });
+    assert.equal(result.status, 200); assert.equal((await result.json()).total, 1);
+    state.role = 'HR';
+  });
   await t.test('HR staff can calculate DistanceFromHome through the protected API', async () => {
     const response = await fetch(base + '/api/v1/distance/calculate', { method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

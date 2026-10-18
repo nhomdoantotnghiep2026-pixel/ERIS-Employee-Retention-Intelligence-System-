@@ -8,13 +8,16 @@ import { createAuth } from './modules/auth.js';
 import { createUserService } from './modules/users/users.create.js';
 import { createService as createUserManagementService } from './modules/users/users.service.js';
 import { createRouter as createUserManagementRouter } from './modules/users/users.routes.js';
+import { resources } from './modules/index.js';
 import { createRouter as createDepartmentsRouter } from './modules/departments/departments.routes.js';
 import { createRouter as createPositionsRouter } from './modules/positions/positions.routes.js';
-import { resources } from './modules/index.js';
 import { createValidationRouter } from './modules/data-validation/data-validation.routes.js';
 import { createDashboardRouter, createReportsRouter } from './modules/dashboard/dashboard.routes.js';
 import { createDistanceService } from './modules/distance/distance.service.js';
 import { createRouter as createDistanceRouter } from './modules/distance/distance.routes.js';
+import { createDistanceImportJobs } from './modules/distance/distance-import.jobs.js';
+import { createDistanceImportRouter } from './modules/distance/distance-import.routes.js';
+import { fileURLToPath } from 'node:url';
 
 export function createApp({ db, config, mailer, otpStore, distanceService }) {
   const app = express();
@@ -30,6 +33,26 @@ export function createApp({ db, config, mailer, otpStore, distanceService }) {
   app.use(helmet(), cors({ origin: config.origin, credentials: true }), express.json({ limit: '256kb' }));
   app.use(rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }));
   app.get('/health/live', (req, res) => res.json({ status: 'ok' }));
+  if (process.env.NODE_ENV !== 'production') {
+    for (const [route, file] of [['/distance-import-demo', 'distance-import.html'],
+      ['/distance-import-demo.js', 'distance-import.js'], ['/distance-import-demo.css', 'distance-import.css']]) {
+      app.get(route, (req, res) => {
+        res.set('Cache-Control', 'no-store');
+        res.sendFile(fileURLToPath(new URL(`../demo/${file}`, import.meta.url)));
+      });
+    }
+    app.get('/attendance-demo', (req, res) => {
+      res.set('Cache-Control', 'no-store');
+      res.sendFile(fileURLToPath(new URL('../demo/attendance.html', import.meta.url)));
+    });
+    app.get('/attendance-demo.js', (req, res) => {
+      res.set('Cache-Control', 'no-store');
+      res.sendFile(fileURLToPath(new URL('../demo/attendance.js', import.meta.url)));
+    });
+    app.post('/attendance-demo/javascript-required', (req, res) => {
+      res.status(400).type('html').send('<!doctype html><html lang="vi"><meta charset="utf-8"><title>JavaScript chưa chạy</title><body><h1>JavaScript chưa chạy trên trang thử</h1><p>Trình duyệt đã gửi form theo cách mặc định. Hãy cho phép JavaScript cho localhost:3000 trong cài đặt trình duyệt, rồi mở lại <a href="/attendance-demo">trang thử chấm công</a>.</p></body></html>');
+    });
+  }
   app.get('/health/ready', async (req, res) => {
     try { await db.query('SELECT 1'); res.json({ status: 'ready' }); }
     catch { res.status(503).json({ status: 'unavailable' }); }
@@ -50,10 +73,12 @@ export function createApp({ db, config, mailer, otpStore, distanceService }) {
     res.json(await userManagement.roles(req.user));
   });
   const distance = distanceService ?? createDistanceService(config.routing);
+  app.use('/api/v1/distance/imports', auth.authenticate, auth.authorize('distanceImport'),
+    createDistanceImportRouter(createDistanceImportJobs(distance)));
   app.use(['/api/distance', '/api/v1/distance'], auth.authenticate, auth.authorize('employees'), createDistanceRouter(distance));
   app.use('/api/v1', auth.authenticate);
   for (const resource of resources) {
-    app.use(`/api/v1${resource.path}`, auth.authorize(resource.permission), resource.createRouter(db));
+    app.use(`/api/v1${resource.path}`, auth.authorize(resource.permission), resource.createRouter(db, { distanceService: distance }));
   }
   app.use('/api/v1/data-validation', auth.authorize('validation'), createValidationRouter());
   app.use('/api/v1/dashboard', auth.authorize('analysis'), createDashboardRouter(db));

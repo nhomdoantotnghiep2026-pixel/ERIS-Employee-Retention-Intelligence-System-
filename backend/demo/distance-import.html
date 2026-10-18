@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ERIS · Import khoảng cách nhân viên</title>
+<link rel="stylesheet" href="/distance-import-demo.css"><script src="/distance-import-demo.js" defer></script></head>
+<body><main>
+<header><div class="brand">ERIS <span>DATA WORKSPACE</span></div><p class="eyebrow">BẢN THỬ NGHIỆM · CSV IMPORT</p>
+<h1>Từ địa chỉ đến khoảng cách.</h1><p class="intro">Tải danh sách nhân viên, kiểm tra địa chỉ và tính quãng đường đến công ty.</p></header>
+<p id="scriptStatus" role="alert">JavaScript chưa chạy. Hãy cho phép JavaScript và tải lại trang.</p>
+<p id="message" role="status" aria-live="polite"></p>
+<section id="loginPanel" class="card narrow"><h2>Đăng nhập để bắt đầu</h2><p>Dùng tài khoản ADMIN hoặc HR đang hoạt động.</p>
+<form id="loginForm"><label>Email<input id="email" type="email" autocomplete="username" required></label>
+<label>Mật khẩu<input id="password" type="password" autocomplete="current-password" required></label>
+<button id="loginButton">Đăng nhập</button></form></section>
+<section id="workspace" hidden>
+<div class="card"><div class="section-title"><div><p class="eyebrow">01 / CHỌN DỮ LIỆU</p><h2>Danh sách nhân viên</h2></div><button id="logout" class="secondary">Đổi tài khoản</button></div>
+<p>CSV UTF-8, tối đa 200 KB / 1.000 dòng. Có thể mở và chỉnh bằng Excel; lưu lại dưới dạng CSV UTF-8.</p>
+<label class="file-label">Chọn file CSV<input id="file" type="file" accept=".csv,text/csv"></label>
+<p class="hint">Các cột: employeeId, houseNumber, street, ward, district, city. Chấp nhận tên địa chỉ cũ hoặc mới; quận/huyện có thể để trống.</p>
+<p id="previewSummary"></p><ul id="issues"></ul>
+<div class="actions"><button id="start" disabled>Xử lý địa chỉ</button><span class="hint">Bấm xử lý sẽ gọi Vietmap và TomTom theo cấu hình hiện tại.</span></div></div>
+<div id="resultsPanel" class="card" hidden><div class="section-title"><div><p class="eyebrow">02 / KẾT QUẢ</p><h2 id="resultTitle">Xem trước dữ liệu</h2></div><button id="download" class="secondary" disabled>Tải kết quả CSV</button></div>
+<progress id="progress" max="100" value="0" aria-label="Tiến độ xử lý"></progress>
+<p id="progressText" aria-live="polite"></p><p id="counts" class="counts"></p>
+<label class="filter">Hiển thị<select id="filter"><option value="ALL">Tất cả nhân viên</option><option value="READY">READY · Đủ dữ liệu</option><option value="REVIEW">REVIEW · Cần xem lại</option></select></label>
+<div class="table-wrap"><table><thead><tr><th>Nhân viên</th><th>Địa chỉ đầu vào</th><th>Địa chỉ xác định</th><th>Lat / Long</th><th>Khoảng cách</th><th>Trạng thái / Lý do</th></tr></thead><tbody id="rows"></tbody></table></div>
+<p class="hint">Chỉ dùng dòng READY cho model. Kết quả REVIEW để trống khoảng cách. Dữ liệu thử được giữ 30 phút sau khi xử lý xong và mất khi backend khởi động lại.</p></div>
+</section><footer>ERIS · Distance from home testing</footer></main></body></html>
