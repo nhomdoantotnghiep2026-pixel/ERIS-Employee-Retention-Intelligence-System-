@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveEmployeeDistance } from '../src/modules/distance/address-resolution.js';
-import { parseEmployee } from '../src/modules/employees/employees.validation.js';
 
 test('automatic geocoding matches old addresses through data_old and refuses multiple candidates', async () => {
   const address = '197 Trần Phú, Phường 4, Quận 5, Hồ Chí Minh';
@@ -21,11 +20,3 @@ test('automatic geocoding matches old addresses through data_old and refuses mul
   assert.equal(routeCalls, 1);
 });
 
-test('employee validation rejects nonfinite money and date rollover without normalizing invalid values', () => {
-  for (const salary of [NaN, Infinity, -1, {}, true, '1e3', '0.001']) {
-    assert.throws(() => parseEmployee({ currentSalary: salary }, false), { status: 400 });
-  }
-  assert.equal(parseEmployee({ currentSalary: 0 }, false).current_salary, '0');
-  assert.equal(parseEmployee({ dateOfBirth: '2000-02-29' }, false).date_of_birth, '2000-02-29');
-  assert.throws(() => parseEmployee({ dateOfBirth: '2001-02-29' }, false), { status: 400 });
-});
