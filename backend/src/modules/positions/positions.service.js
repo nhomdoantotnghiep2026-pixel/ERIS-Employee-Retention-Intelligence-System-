@@ -1,5 +1,5 @@
-import { createReadService } from '../../common/read-resource.js';
-import { createRepository } from './positions.repository.js';
+import { createCatalogService } from '../../common/catalog-resource.js';
+import { definition } from './positions.repository.js';
 
-export const createService = db => createReadService(createRepository(db));
+export const createService = db => createCatalogService(db, definition);
 

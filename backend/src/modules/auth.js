@@ -57,7 +57,9 @@ export function createAuth(db, config, injectedMailer, otpStore) {
     // Browser cookie mutations must originate from the configured frontend.
     // CLI clients may omit Origin; cross-site Fetch Metadata is still rejected.
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-      if ((req.headers.origin && req.headers.origin !== config.origin)
+      const demoOrigins = process.env.NODE_ENV === 'production' ? []
+        : [`http://localhost:${config.port ?? 3000}`, `http://127.0.0.1:${config.port ?? 3000}`];
+      if ((req.headers.origin && req.headers.origin !== config.origin && !demoOrigins.includes(req.headers.origin))
           || (!req.headers.origin && req.headers['sec-fetch-site'] === 'cross-site')) {
         throw new HttpError(403, 'INVALID_ORIGIN', 'Request origin is not allowed');
       }

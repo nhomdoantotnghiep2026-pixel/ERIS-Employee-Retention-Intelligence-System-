@@ -2,18 +2,20 @@ import { createReadRepository } from '../../common/read-resource.js';
 
 export const definition = {
   "table": "positions",
-  "columns": [
-    "id",
-    "title",
-    "level",
-    "description",
-    "created_at",
-    "updated_at"
-  ],
   "filters": [],
   "search": [
-    "title"
+    "code",
+    "name"
+  ],
+  "columns": [
+    "id",
+    "code",
+    "name",
+    "job_level",
+    "description",
+    "status",
+    "created_at",
+    "updated_at"
   ]
 };
 export const createRepository = db => createReadRepository(db, definition);
-

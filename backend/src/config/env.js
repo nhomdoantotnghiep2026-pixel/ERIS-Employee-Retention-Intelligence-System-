@@ -18,11 +18,10 @@ export function readConfig(env = process.env) {
   if (!['disable', 'require'].includes(sslMode)) throw new Error('PGSSLMODE must be disable or require');
   const roles = {
     admin: env.ROLE_ADMIN || 'ADMIN',
-    staff: env.ROLE_HR_STAFF || 'HR_STAFF',
-    manager: env.ROLE_HR_MANAGER || 'HR_MANAGER',
-    analyst: env.ROLE_ANALYST || 'AI_ANALYST',
+    staff: env.ROLE_HR || env.ROLE_HR_STAFF || 'HR',
+    employee: env.ROLE_EMPLOYEE || 'EMPLOYEE',
   };
-  if (new Set(Object.values(roles)).size !== 4) throw new Error('Role names must be distinct');
+  if (new Set(Object.values(roles)).size !== Object.keys(roles).length) throw new Error('Role names must be distinct');
   const integer = (name, fallback, min, max) => {
     const value = Number(env[name] ?? fallback);
     if (!Number.isInteger(value) || value < min || value > max) throw new Error(`Invalid ${name}`);

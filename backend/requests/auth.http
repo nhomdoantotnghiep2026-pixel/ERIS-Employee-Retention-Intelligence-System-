@@ -46,4 +46,4 @@ POST {{baseUrl}}/api/auth/user_register
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
-{"email":"staff@eris.example","fullName":"HR Staff","roleId":2}
+{"email":"staff@eris.example","roleId":2}

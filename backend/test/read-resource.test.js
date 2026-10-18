@@ -29,9 +29,12 @@ test('CSV quotes data and neutralizes formulas', () => {
   assert.ok(csv.includes('"a,""b"""'));
 });
 test('unknown roles fail closed; system administration does not imply HR data access', () => {
-  const names = { admin: 'ADMIN', staff: 'STAFF', manager: 'MANAGER', analyst: 'ANALYST' };
+  const names = { admin: 'ADMIN', staff: 'HR', employee: 'EMPLOYEE' };
   assert.equal(hasPermission('UNKNOWN', 'analysis', names), false);
   assert.equal(hasPermission('ADMIN', 'employees', names), false);
   assert.equal(hasPermission('STAFF', 'admin', names), false);
-  assert.equal(hasPermission('ANALYST', 'validation', names), true);
+  assert.equal(hasPermission('HR', 'validation', names), true);
+  assert.equal(hasPermission('EMPLOYEE', 'validation', names), false);
+  assert.equal(hasPermission('HR_MANAGER', 'catalog', names), false);
+  assert.equal(hasPermission('DATA', 'analysis', names), false);
 });

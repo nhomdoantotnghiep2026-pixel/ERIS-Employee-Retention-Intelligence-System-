@@ -13,8 +13,8 @@ export function createDashboardRepository(db) {
         FROM public.employees e
         LEFT JOIN public.departments d ON d.id = e.department_id
         LEFT JOIN LATERAL (
-          SELECT id, risk_level FROM public.predictions
-          WHERE employee_id = e.id ORDER BY predicted_at DESC, id DESC LIMIT 1
+          SELECT id, risk_level FROM public.prediction_results
+          WHERE employee_id = e.id ORDER BY created_at DESC, id DESC LIMIT 1
         ) p ON true
         WHERE e.employment_status = 'ACTIVE'
         GROUP BY e.department_id, d.name ORDER BY d.name NULLS LAST`);

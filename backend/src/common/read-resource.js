@@ -9,10 +9,17 @@ const identifier = value => {
 };
 
 export function createReadRepository(db, definition) {
+  const requireAvailable = () => {
+    if (definition.unavailable) throw new HttpError(503, 'FEATURE_UNAVAILABLE', definition.unavailable);
+  };
   const table = `public.${identifier(definition.table)}`;
   const columns = definition.columns.map(identifier).join(', ');
   return {
     async list(query) {
+      requireAvailable();
+      if (Object.keys(query).some(key => !['page', 'limit', 'q', ...(definition.filters || [])].includes(key))) {
+        throw new HttpError(400, 'INVALID_PARAMETER', 'Unsupported query parameter for this resource');
+      }
       const paging = pagination(query);
       const values = [];
       const clauses = [];
@@ -38,6 +45,7 @@ export function createReadRepository(db, definition) {
       } };
     },
     async findById(id) {
+      requireAvailable();
       const { rows } = await db.query(`SELECT ${columns} FROM ${table} WHERE id = $1`, [id]);
       return rows[0];
     },

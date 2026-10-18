@@ -4,7 +4,8 @@ import { HttpError } from '../../common/errors.js';
 import * as validate from './auth.validation.js';
 import { createTokens } from './auth.tokens.js';
 
-export const publicUser = user => ({ id: user.id, email: user.email, fullName: user.full_name, roleId: user.role_id, status: user.status });
+export const publicUser = user => ({ id: user.id, email: user.email, fullName: user.full_name ?? null,
+  employeeId: user.employee_id ?? null, roleId: user.role_id, status: user.status });
 const unauthorized = () => new HttpError(401, 'INVALID_SESSION', 'Invalid or expired token');
 const invalidOtp = () => new HttpError(400, 'INVALID_OTP', 'Invalid or expired OTP');
 export const forgotMessage = 'If the account is eligible, a password reset OTP will be sent';

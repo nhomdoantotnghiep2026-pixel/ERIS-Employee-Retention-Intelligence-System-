@@ -1,6 +1,7 @@
 import { createReadRepository } from '../../common/read-resource.js';
 
 export const definition = {
+  "unavailable": "Retention actions are not part of the current database schema",
   "table": "retention_actions",
   "columns": [
     "id",

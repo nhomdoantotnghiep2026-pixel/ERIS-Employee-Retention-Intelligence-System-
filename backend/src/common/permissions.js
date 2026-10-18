@@ -1,11 +1,11 @@
 export const permissions = Object.freeze({
-  directory: ['admin', 'staff', 'manager', 'analyst'],
-  employees: ['staff', 'manager', 'analyst'],
-  analysis: ['staff', 'manager', 'analyst'],
-  retention: ['staff', 'manager'],
-  models: ['manager', 'analyst'],
+  catalog: ['staff'],
+  employees: ['staff'],
+  analysis: ['staff'],
+  retention: ['staff'],
+  models: ['staff'],
   admin: ['admin'],
-  validation: ['analyst'],
+  validation: ['staff'],
 });
 
 export function hasPermission(roleName, group, roleNames) {

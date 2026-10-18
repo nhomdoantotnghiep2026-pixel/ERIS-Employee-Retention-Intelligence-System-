@@ -32,16 +32,18 @@ test('Cookie authentication against team schema and HTTP', async t => {
   const passwordHash = await bcrypt.hash(password, 4);
   const config = { origin: 'http://localhost:5173', jwtSecret: 'test-auth-secret-'.repeat(3),
     initialUserPassword: 'Testpassword123!',
-    roles: { admin: 'ADMIN', staff: 'HR_STAFF', manager: 'HR_MANAGER', analyst: 'AI_ANALYST' },
+    roles: { admin: 'ADMIN', staff: 'HR', employee: 'EMPLOYEE' },
     auth: { cookieSecure: true, cookieSameSite: 'lax', accessTtlSeconds: 3600, refreshTtlSeconds: 604800,
       otpTtlSeconds: 900, otpMaxAttempts: 5, passwordChangeTokenTtlSeconds: 900 } };
 
   async function fixture(sub, options = {}) {
-    await db.query('TRUNCATE public.roles RESTART IDENTITY CASCADE');
-    for (const role of Object.values(config.roles)) await db.query('INSERT INTO public.roles(name) VALUES ($1)', [role]);
+    await db.query('TRUNCATE public.role, public.employees RESTART IDENTITY CASCADE');
+    for (const role of Object.values(config.roles)) await db.query('INSERT INTO public.role(name) VALUES ($1)', [role]);
     for (const [email, role, status] of [['admin@eris.test', 1, 'ACTIVE'], ['staff@eris.test', 2, 'ACTIVE'], ['disabled@eris.test', 2, 'INACTIVE']]) {
-      await db.query('INSERT INTO public.users(email, password_hash, full_name, role_id, status) VALUES ($1,$2,$3,$4,$5)', [email, passwordHash, 'Test User', role, status]);
+      const employee = (await db.query('INSERT INTO public.employees(employee_code, full_name, hire_date) VALUES ($1,$2,CURRENT_DATE) RETURNING id', [email, 'Test User'])).rows[0];
+      await db.query('INSERT INTO public.users(email, password_hash, employee_id, role_id, status) VALUES ($1,$2,$3,$4,$5)', [email, passwordHash, employee.id, role, status]);
     }
+    await db.query("INSERT INTO public.employees(employee_code,full_name,hire_date) VALUES ('NEW_EMPLOYEE','New Employee',CURRENT_DATE)");
     const deliveries = [];
     const otpStore = options.otpStore ?? memoryOtpStore(config.auth.otpMaxAttempts);
     const mailer = options.mailer ?? {
@@ -81,7 +83,8 @@ test('Cookie authentication against team schema and HTTP', async t => {
     assert.equal(refreshClaims.exp - refreshClaims.iat, 604800);
     assert.match(result.cookie, /Max-Age=604800/);
     const tables = (await db.query("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename")).rows;
-    assert.deepEqual(tables.map(r => r.tablename), ['audit_logs', 'roles', 'users']);
+    assert.ok(tables.some(row => row.tablename === 'role'));
+    assert.equal(tables.some(row => /session|otp/.test(row.tablename)), false);
     const claims = jwt.verify(result.body.accessToken, config.jwtSecret);
     assert.equal(claims.exp - claims.iat, 3600);
   });
@@ -231,7 +234,7 @@ test('Cookie authentication against team schema and HTTP', async t => {
   });
   await t.test('ADMIN creates user and audit record; role escalation and duplicate email blocked', async sub => {
     const f = await fixture(sub); const admin = await f.login('admin@eris.test'); const staff = await f.login();
-    const body = { email: 'New@eris.test', fullName: 'New Analyst', roleId: 4 };
+    const body = { email: 'New@eris.test', roleId: 3, employeeId: 4 };
     assert.equal((await f.request('/api/auth/user_register', { body, access: staff.body.accessToken })).status, 403);
     const created = await f.request('/api/auth/user_register', { body, access: admin.body.accessToken });
     assert.equal(created.status, 201); assert.equal(created.body.email, 'new@eris.test');
@@ -259,7 +262,7 @@ test('Cookie authentication against team schema and HTTP', async t => {
     await db.query("ALTER TABLE public.audit_logs ADD CONSTRAINT test_audit_failure CHECK (action <> 'USER_CREATED')");
     try {
       const result = await f.request('/api/auth/user_register', { access: admin.body.accessToken,
-        body: { email: 'rollback@eris.test', fullName: 'Rollback', roleId: 2 } });
+        body: { email: 'rollback@eris.test', roleId: 2 } });
       assert.equal(result.status, 500);
       assert.equal((await db.query("SELECT count(*)::int AS n FROM public.users WHERE email='rollback@eris.test'")).rows[0].n, 0);
     } finally { await db.query('ALTER TABLE public.audit_logs DROP CONSTRAINT test_audit_failure'); }
@@ -271,6 +274,8 @@ test('Cookie authentication against team schema and HTTP', async t => {
     assert.equal((await f.request('/api/auth/logout', { cookie: session.cookie, headers: { 'Sec-Fetch-Site': 'cross-site' } })).status, 403);
     const good = await f.request('/api/auth/refresh', { cookie: session.cookie, headers: { Origin: config.origin } });
     assert.equal(good.status, 200); assert.equal(good.headers.get('access-control-allow-credentials'), 'true');
+    const demo = await f.request('/api/auth/refresh', { cookie: session.cookie, headers: { Origin: 'http://localhost:3000' } });
+    assert.equal(demo.status, 200);
   });
   await t.test('forgot-password rate limiter returns 429', async sub => {
     const f = await fixture(sub);

@@ -3,11 +3,12 @@ import { pagination, positiveInteger } from '../../common/pagination.js';
 import * as validate from '../auth/auth.validation.js';
 import { createRepository } from './users.repository.js';
 
-const allowedStatuses = new Set(['ACTIVE', 'INACTIVE', 'IN_PROCESS']);
+const allowedStatuses = new Set(['ACTIVE', 'INACTIVE']);
 const output = user => ({
   id: user.id,
   email: user.email,
-  fullName: user.full_name,
+  fullName: user.full_name ?? null,
+  employeeId: user.employee_id ?? null,
   role: { id: user.role_id, name: user.role_name },
   status: user.status,
   createdAt: user.created_at,
@@ -71,47 +72,12 @@ export function createService(db, config) {
       return output(user);
     },
 
-    async updateProfile(actor, idValue, body) {
-      const id = positiveInteger(idValue, 'id');
-      if (!isAdmin(actor, config) && actor.id !== id) {
-        throw new HttpError(403, 'FORBIDDEN', 'You can only update your own account');
-      }
-      validate.bodyObject(body, ['fullName', 'email']);
-      if (!Object.hasOwn(body, 'fullName') && !Object.hasOwn(body, 'email')) {
-        throw new HttpError(400, 'VALIDATION_ERROR', 'fullName or email is required');
-      }
-      const changes = {
-        fullName: Object.hasOwn(body, 'fullName') ? validate.fullName(body.fullName) : undefined,
-        email: Object.hasOwn(body, 'email') ? validate.email(body.email) : undefined,
-      };
-      try {
-        return await repository.transaction(async repo => {
-          const current = await repo.findById(id, true);
-          if (!current) throw new HttpError(404, 'USER_NOT_FOUND', 'User not found');
-          if (changes.email !== undefined) {
-            const duplicate = await repo.findByEmail(changes.email);
-            if (duplicate && duplicate.id !== id) throw new HttpError(409, 'EMAIL_EXISTS', 'Email already exists');
-          }
-          const changed = (changes.email !== undefined && changes.email !== current.email)
-            || (changes.fullName !== undefined && changes.fullName !== current.full_name);
-          if (changed) {
-            await repo.updateProfile(id, changes);
-            await repo.audit(actor.id, 'USER_UPDATED', id);
-          }
-          return output(await repo.findById(id));
-        });
-      } catch (error) {
-        if (error.code === '23505') throw new HttpError(409, 'EMAIL_EXISTS', 'Email already exists');
-        throw error;
-      }
-    },
-
     async updateStatus(actor, idValue, body) {
       if (!isAdmin(actor, config)) throw new HttpError(403, 'FORBIDDEN', 'Only ADMIN can change user status');
       const id = positiveInteger(idValue, 'id');
       validate.bodyObject(body, ['status']);
       if (!Object.hasOwn(body, 'status')) throw new HttpError(400, 'VALIDATION_ERROR', 'status is required');
-      const status = parseStatus(body.status, new Set(['ACTIVE', 'INACTIVE']));
+      const status = parseStatus(body.status, new Set(['INACTIVE']));
       if (actor.id === id && status === 'INACTIVE') {
         throw new HttpError(400, 'SELF_LOCK_FORBIDDEN', 'ADMIN cannot lock the account currently in use');
       }
@@ -139,6 +105,12 @@ export function createService(db, config) {
         if (!role) throw new HttpError(400, 'INVALID_ROLE', 'roleId does not exist');
         if (current.role_name === config.roles.admin || role.name === config.roles.admin) {
           throw new HttpError(403, 'ADMIN_ROLE_PROTECTED', 'ADMIN role cannot be changed or assigned here');
+        }
+        if (![config.roles.staff, config.roles.employee].includes(role.name)) {
+          throw new HttpError(400, 'INVALID_ROLE', 'Only HR or EMPLOYEE can be assigned');
+        }
+        if (role.name === config.roles.employee && !current.employee_id) {
+          throw new HttpError(400, 'EMPLOYEE_REQUIRED', 'EMPLOYEE accounts require a linked employee');
         }
         if (current.role_id !== roleId) {
           await repo.updateRole(id, roleId);

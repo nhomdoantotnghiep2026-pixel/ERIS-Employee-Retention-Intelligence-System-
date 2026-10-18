@@ -8,12 +8,12 @@ import { createApp } from '../src/app.js';
 test('API authentication, permission boundaries and unavailable dependencies', async t => {
   const config = { origin: 'http://localhost:5173', jwtSecret: 'unit-test-secret-'.repeat(3),
     initialUserPassword: 'Testpassword123!',
-    roles: { admin: 'ADMIN', staff: 'STAFF', manager: 'MANAGER', analyst: 'ANALYST' } };
-  let state = { role: 'STAFF', status: 'ACTIVE', dbDown: false };
+    roles: { admin: 'ADMIN', staff: 'HR', employee: 'EMPLOYEE' } };
+  let state = { role: 'HR', status: 'ACTIVE', dbDown: false };
   const hash = await bcrypt.hash('test-password', 4);
   const db = { async query(sql) {
     if (state.dbDown) throw new Error('private-db-host-and-password');
-    if (sql.includes('JOIN public.roles')) return { rows: [{
+    if (sql.includes('JOIN public.role')) return { rows: [{
       id: 1, email: 'staff@example.test', full_name: 'Test Staff', role_id: 1,
       role_name: state.role, status: state.status,
       ...(sql.includes('password_hash') ? { password_hash: hash } : {}),
@@ -67,8 +67,8 @@ test('API authentication, permission boundaries and unavailable dependencies', a
     const invalid = jwt.sign({}, config.jwtSecret, { subject: '1', issuer: 'eris-api', audience: 'another-app' });
     assert.equal((await fetch(base + '/api/v1/employees', { headers: { Authorization: `Bearer ${invalid}` } })).status, 401);
   });
-  await t.test('analyst sees explicit model-not-ready instead of fake predictions', async () => {
-    state.role = 'ANALYST';
+  await t.test('HR sees explicit model-not-ready instead of fake predictions', async () => {
+    state.role = 'HR';
     const response = await fetch(base + '/api/v1/predictions', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
     assert.equal(response.status, 503);
     assert.equal((await response.json()).error.code, 'MODEL_NOT_READY');

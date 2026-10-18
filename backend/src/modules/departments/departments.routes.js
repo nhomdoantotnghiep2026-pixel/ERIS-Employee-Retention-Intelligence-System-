@@ -1,6 +1,6 @@
-import { createReadRouter } from '../../common/read-resource.js';
+import { createCatalogRouter } from '../../common/catalog-resource.js';
 import { createService } from './departments.service.js';
 
-export const permission = 'directory';
-export const createRouter = db => createReadRouter(createService(db));
+export const permission = 'catalog';
+export const createRouter = db => createCatalogRouter(createService(db));
 

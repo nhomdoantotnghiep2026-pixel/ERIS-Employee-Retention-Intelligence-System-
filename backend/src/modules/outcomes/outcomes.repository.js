@@ -1,6 +1,7 @@
 import { createReadRepository } from '../../common/read-resource.js';
 
 export const definition = {
+  "unavailable": "Employee outcomes are not part of the current database schema",
   "table": "employee_outcomes",
   "columns": [
     "id",

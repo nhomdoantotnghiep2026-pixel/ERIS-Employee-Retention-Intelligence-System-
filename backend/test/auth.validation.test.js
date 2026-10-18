@@ -24,4 +24,5 @@ test('auth config rejects insecure production and invalid OTP settings', () => {
   const config = readConfig({ ...env, NODE_ENV: 'production', CORS_ORIGIN: 'https://eris.example' });
   assert.equal(config.auth.cookieSecure, true);
   assert.equal(config.roles.admin, 'ADMIN');
+  assert.deepEqual(config.roles, { admin: 'ADMIN', staff: 'HR', employee: 'EMPLOYEE' });
 });

@@ -1,0 +1,36 @@
+@baseUrl = http://localhost:3000
+@hrAccessToken = paste_hr_access_token_locally
+@departmentId = 1
+@positionId = 1
+
+### HR lists departments (ADMIN/EMPLOYEE must receive 403)
+GET {{baseUrl}}/api/departments?q=engine&page=1&limit=20
+Authorization: Bearer {{hrAccessToken}}
+
+### HR creates department; code is optional and generated when absent
+POST {{baseUrl}}/api/departments
+Authorization: Bearer {{hrAccessToken}}
+Content-Type: application/json
+
+{"name":"Engineering","description":null}
+
+### HR updates department
+PATCH {{baseUrl}}/api/departments/{{departmentId}}
+Authorization: Bearer {{hrAccessToken}}
+Content-Type: application/json
+
+{"name":"Technology","description":"Updated department"}
+
+### HR creates position; aliases title/level are also accepted
+POST {{baseUrl}}/api/positions
+Authorization: Bearer {{hrAccessToken}}
+Content-Type: application/json
+
+{"name":"Engineer","jobLevel":"Senior","description":null}
+
+### HR updates position
+PATCH {{baseUrl}}/api/positions/{{positionId}}
+Authorization: Bearer {{hrAccessToken}}
+Content-Type: application/json
+
+{"jobLevel":"Lead"}

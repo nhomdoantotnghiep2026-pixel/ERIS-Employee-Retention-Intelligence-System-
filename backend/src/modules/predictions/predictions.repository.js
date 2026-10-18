@@ -1,22 +1,21 @@
 import { createReadRepository } from '../../common/read-resource.js';
 
 export const definition = {
-  "table": "predictions",
-  "columns": [
-    "id",
-    "employee_id",
-    "snapshot_id",
-    "model_version_id",
-    "risk_score",
-    "risk_level",
-    "predicted_attrition",
-    "predicted_at"
-  ],
+  "table": "prediction_results",
   "filters": [
     "employee_id",
     "snapshot_id",
-    "model_version_id"
+    "prediction_run_id"
+  ],
+  "columns": [
+    "id",
+    "prediction_run_id",
+    "employee_id",
+    "snapshot_id",
+    "attrition_probability",
+    "risk_level",
+    "prediction_label",
+    "created_at"
   ]
 };
 export const createRepository = db => createReadRepository(db, definition);
-

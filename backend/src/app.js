@@ -8,6 +8,8 @@ import { createAuth } from './modules/auth.js';
 import { createUserService } from './modules/users/users.create.js';
 import { createService as createUserManagementService } from './modules/users/users.service.js';
 import { createRouter as createUserManagementRouter } from './modules/users/users.routes.js';
+import { createRouter as createDepartmentsRouter } from './modules/departments/departments.routes.js';
+import { createRouter as createPositionsRouter } from './modules/positions/positions.routes.js';
 import { resources } from './modules/index.js';
 import { createValidationRouter } from './modules/data-validation/data-validation.routes.js';
 import { createDashboardRouter, createReportsRouter } from './modules/dashboard/dashboard.routes.js';
@@ -42,6 +44,8 @@ export function createApp({ db, config, mailer, otpStore, distanceService }) {
   const userManagement = createUserManagementService(db, config);
   const userRouter = createUserManagementRouter(userManagement);
   app.use(['/api/users', '/api/v1/users'], auth.authenticate, userRouter);
+  app.use('/api/departments', auth.authenticate, auth.authorize('catalog'), createDepartmentsRouter(db));
+  app.use('/api/positions', auth.authenticate, auth.authorize('catalog'), createPositionsRouter(db));
   app.get(['/api/roles', '/api/v1/user-management/roles'], auth.authenticate, async (req, res) => {
     res.json(await userManagement.roles(req.user));
   });

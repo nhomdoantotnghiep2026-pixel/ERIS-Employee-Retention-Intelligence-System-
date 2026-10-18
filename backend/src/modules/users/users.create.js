@@ -4,8 +4,12 @@ import { publicUser } from '../auth/auth.service.js';
 import * as validate from '../auth/auth.validation.js';
 export function createUserService(repository, config, mailer) {
   return async (actorId, body) => {
-    validate.bodyObject(body, ['email', 'fullName', 'roleId']);
-    const email = validate.email(body.email), fullName = validate.fullName(body.fullName);
+    validate.bodyObject(body, ['email', 'employeeId', 'roleId']);
+    const email = validate.email(body.email);
+    const employeeId = body.employeeId ?? null;
+    if (employeeId !== null && (!Number.isSafeInteger(employeeId) || employeeId < 1)) {
+      throw new HttpError(400, 'VALIDATION_ERROR', 'employeeId must be a positive integer');
+    }
     const roleId = validate.roleId(body.roleId);
     if (!mailer?.configured) throw new HttpError(503, 'EMAIL_NOT_CONFIGURED', 'Account invitation email is unavailable');
     const passwordHash = await bcrypt.hash(config.initialUserPassword, 12);
@@ -14,19 +18,21 @@ export function createUserService(repository, config, mailer) {
         const actor = await repo.userById(actorId, true);
         if (actor?.status !== 'ACTIVE' || actor.role_name !== config.roles.admin) throw new HttpError(403, 'FORBIDDEN', 'Only ADMIN can create users');
         const role = await repo.roleById(roleId);
-        if (!role || ![config.roles.staff, config.roles.manager, config.roles.analyst].includes(role.name)) {
+        if (!role || ![config.roles.staff, config.roles.employee].includes(role.name)) {
           throw new HttpError(400, 'INVALID_ROLE', 'roleId must identify an allowed non-admin role');
         }
+        if (role.name === config.roles.employee && !employeeId) throw new HttpError(400, 'EMPLOYEE_REQUIRED', 'EMPLOYEE accounts require employeeId');
+        if (employeeId && !await repo.employeeById(employeeId)) throw new HttpError(400, 'EMPLOYEE_NOT_FOUND', 'employeeId does not exist');
         await repo.lockEmail(email);
         if (await repo.userByEmail(email)) throw new HttpError(409, 'EMAIL_EXISTS', 'Email already exists');
-        const id = await repo.insertUser({ email, passwordHash, fullName, roleId, status: 'IN_PROCESS' });
+        const id = await repo.insertUser({ email, passwordHash, employeeId, roleId, status: 'IN_PROCESS' });
         await repo.audit(actorId, 'USER_CREATED', id);
         try { await mailer.sendWelcome(email, config.initialUserPassword); }
         catch { throw new HttpError(503, 'EMAIL_DELIVERY_FAILED', 'Account invitation email could not be sent'); }
         return publicUser(await repo.userById(id));
       });
     } catch (error) {
-      if (error.code === '23505') throw new HttpError(409, 'EMAIL_EXISTS', 'Email already exists');
+      if (error.code === '23505') throw new HttpError(409, 'USER_ALREADY_EXISTS', 'Email or employee is already linked to an account');
       throw error;
     }
   };
