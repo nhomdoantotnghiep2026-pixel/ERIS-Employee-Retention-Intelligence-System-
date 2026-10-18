@@ -1,0 +1,300 @@
+{
+  "info": {
+    "name": "ERIS Employee Management API",
+    "description": "4 HR-only Employee Profile APIs and a distance preview helper. Configure a real HR account, ACTIVE departmentId/positionId, and unique employeeCode/email. ADMIN/EMPLOYEE receive 403. API creates profiles; it does not create login accounts.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "hrEmail",
+      "value": "hr@example.com",
+      "type": "string"
+    },
+    {
+      "key": "hrPassword",
+      "value": "NhapMatKhauHRTaiDay123!",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "employeeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "employeeCode",
+      "value": "EMP-DEMO-001",
+      "type": "string"
+    },
+    {
+      "key": "employeeEmail",
+      "value": "employee.demo@example.com",
+      "type": "string"
+    },
+    {
+      "key": "departmentId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "positionId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "homeAddress",
+      "value": "197 Trần Phú, Phường 4, Quận 5, Hồ Chí Minh",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Login HR",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{hrEmail}}\",\n  \"password\": \"{{hrPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login succeeds', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  if (data.accessToken) pm.collectionVariables.set('accessToken', data.accessToken);",
+              "  pm.test('ACTIVE session token received', () => pm.expect(data.accessToken).to.be.a('string'));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Inspect ACTIVE Departments",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/departments"
+      }
+    },
+    {
+      "name": "02 - Inspect ACTIVE Positions",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/positions"
+      }
+    },
+    {
+      "name": "03 - Preview Home Distance",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"address\": \"{{homeAddress}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/distance/resolve-address"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Preview succeeds', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) pm.test('Distance is READY or REVIEW', () => pm.expect(['READY','REVIEW']).to.include(pm.response.json().status));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Create Employee Profile",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"employeeCode\": \"{{employeeCode}}\",\n  \"fullName\": \"Nguyen Van A\",\n  \"email\": \"{{employeeEmail}}\",\n  \"phone\": \"0901234567\",\n  \"dateOfBirth\": \"2000-05-20\",\n  \"gender\": \"MALE\",\n  \"address\": \"{{homeAddress}}\",\n  \"departmentId\": {{departmentId}},\n  \"positionId\": {{positionId}},\n  \"hireDate\": \"2026-01-10\",\n  \"employmentType\": \"FULL_TIME\",\n  \"employmentStatus\": \"ACTIVE\",\n  \"currentSalary\": 15000000\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/employees"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Created', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('employeeId', String(data.id));",
+              "  pm.test('Computed distance or explicit missing value', () => pm.expect(data.distanceFromHomeKm === null || data.distanceFromHomeKm >= 0).to.equal(true));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - List And Filter Employees",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/employees?q={{employeeCode}}&departmentId={{departmentId}}&page=1&limit=20"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('List succeeds', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Get Employee Detail",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/employees/{{employeeId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Detail succeeds', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Update Employee Profile",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"0912345678\",\n  \"currentSalary\": \"18000000.00\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/employees/{{employeeId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Update succeeds', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Change Address And Recalculate Distance",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"address\": \"197 Trần Phú, Phường Chợ Quán, Hồ Chí Minh\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/employees/{{employeeId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Update succeeds even if address needs review', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

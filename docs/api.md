@@ -2,9 +2,11 @@
 
 Các API nghiệp vụ dùng `/api/v1`, trả JSON và yêu cầu header `Authorization: Bearer <access_token>`.
 
+Employee Management hiện có 4 API theo thiết kế mới: POST/GET `/api/employees`, GET/PATCH `/api/employees/:id`, đồng thời hỗ trợ prefix `/api/v1`. Chỉ HR truy cập. Response dùng camelCase, detail/create/update trả đối tượng trực tiếp; xem [hợp đồng và request mẫu](../backend/docs/employee-management.md). `POST /api/distance/resolve-address` hỗ trợ xem trước khoảng cách trên form trước khi lưu.
+
 ## Auth
 
-Auth dùng `/api/auth`. ADMIN tạo tài khoản qua `POST /api/users`. Request, response và cách test ghi trong [authentication.md](authentication.md).
+Auth dùng `/api/auth`. ADMIN tạo tài khoản qua `POST /api/auth/user_register`. Request, response và cách test ghi trong [authentication.md](authentication.md). Schema hiện tại được mô tả trong [bản đối chiếu database](../backend/docs/database-schema-update.md).
 
 Đường dẫn auth cũ `/api/v1/auth` vẫn hoạt động. Các đường dẫn trong bảng dưới đều thêm `/api/v1` ở đầu.
 
@@ -14,20 +16,22 @@ Các resource dưới đây đều hỗ trợ `GET /resource` và `GET /resource
 
 | Resource | Nhóm quyền | Query lọc |
 |---|---|---|
-| users | admin | role_id, q (email/full_name) |
+| users | admin | roleId, search (email/tên nhân viên liên kết), status |
 | roles | admin | — |
-| departments | tất cả role đã cấu hình | q (name) |
-| positions | tất cả role đã cấu hình | q (title) |
-| employees | HR staff/manager, analyst | department_id, position_id, manager_id, q (code/name/email) |
-| snapshots | HR staff/manager, analyst | employee_id |
-| models | HR manager, analyst | — |
-| predictions | HR staff/manager, analyst | employee_id, snapshot_id, model_version_id |
-| explanations | HR staff/manager, analyst | prediction_id |
-| retention-actions | HR staff/manager | employee_id, prediction_id, created_by |
-| outcomes | HR staff/manager | employee_id |
+| departments | Chỉ HR | q (code/name) |
+| positions | Chỉ HR | q (code/name) |
+| employees | HR | department_id, position_id, q (code/name/email) |
+| snapshots | HR | employee_id, department_id, position_id |
+| models | HR | created_by |
+| predictions | HR | employee_id, snapshot_id, prediction_run_id |
+| explanations | HR | prediction_result_id |
+| retention-actions | HR | HTTP 503: không có bảng trong schema mới |
+| outcomes | HR | HTTP 503: không có bảng trong schema mới |
 | audit | admin | user_id, entity_id |
 
 Quyền đang khai báo ở `common/permissions.js`. ADMIN quản lý tài khoản, chưa được cấp quyền xem hồ sơ nhân viên. Hiện chưa giới hạn dữ liệu theo phòng ban.
+
+Theo yêu cầu mới của nhóm trưởng, Department/Position có thêm POST và PATCH, chỉ HR được gọi; alias `/api/departments`, `/api/positions` cũng hoạt động. Xem [request và quy tắc kiểm tra](../backend/docs/database-schema-update.md). API UM-03 `PATCH /api/users/:id` đã bỏ; UM-04 chỉ khóa `INACTIVE`, không hỗ trợ unlock. Danh sách user chỉ lọc `ACTIVE`/`INACTIVE`.
 
 List: `?page=1&limit=20`, limit tối đa 100, thứ tự id giảm dần. Trả:
 
@@ -35,7 +39,7 @@ List: `?page=1&limit=20`, limit tối đa 100, thứ tự id giảm dần. Trả
 {"data":[],"pagination":{"page":1,"limit":20,"has_more":false}}
 ```
 
-Detail: `{"data":{...}}`. ID không tồn tại trả 404. Các cột PostgreSQL numeric được driver pg trả dạng string để giữ độ chính xác; không ép số tiền thành floating point. Query chưa được hỗ trợ không có tác dụng; không có total count trong v0.1.
+Detail: `{"data":{...}}` cho resource đọc chung; user management và Employee Management trả trực tiếp đối tượng. ID không tồn tại trả 404. Các cột PostgreSQL numeric được driver pg trả dạng string để giữ độ chính xác; không ép số tiền thành floating point. Query chưa được hỗ trợ trả 400; user management và Employee Management có total count/hasMore, các resource đọc còn lại dùng has_more.
 
 ## Dashboard và report
 

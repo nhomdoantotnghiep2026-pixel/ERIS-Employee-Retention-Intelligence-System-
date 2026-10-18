@@ -8,6 +8,7 @@ import { createAuth } from './modules/auth.js';
 import { createUserService } from './modules/users/users.create.js';
 import { createService as createUserManagementService } from './modules/users/users.service.js';
 import { createRouter as createUserManagementRouter } from './modules/users/users.routes.js';
+import { createRouter as createEmployeesRouter } from './modules/employees/employees.routes.js';
 import { resources } from './modules/index.js';
 import { createRouter as createDepartmentsRouter } from './modules/departments/departments.routes.js';
 import { createRouter as createPositionsRouter } from './modules/positions/positions.routes.js';
@@ -41,17 +42,6 @@ export function createApp({ db, config, mailer, otpStore, distanceService }) {
         res.sendFile(fileURLToPath(new URL(`../demo/${file}`, import.meta.url)));
       });
     }
-    app.get('/attendance-demo', (req, res) => {
-      res.set('Cache-Control', 'no-store');
-      res.sendFile(fileURLToPath(new URL('../demo/attendance.html', import.meta.url)));
-    });
-    app.get('/attendance-demo.js', (req, res) => {
-      res.set('Cache-Control', 'no-store');
-      res.sendFile(fileURLToPath(new URL('../demo/attendance.js', import.meta.url)));
-    });
-    app.post('/attendance-demo/javascript-required', (req, res) => {
-      res.status(400).type('html').send('<!doctype html><html lang="vi"><meta charset="utf-8"><title>JavaScript chưa chạy</title><body><h1>JavaScript chưa chạy trên trang thử</h1><p>Trình duyệt đã gửi form theo cách mặc định. Hãy cho phép JavaScript cho localhost:3000 trong cài đặt trình duyệt, rồi mở lại <a href="/attendance-demo">trang thử chấm công</a>.</p></body></html>');
-    });
   }
   app.get('/health/ready', async (req, res) => {
     try { await db.query('SELECT 1'); res.json({ status: 'ready' }); }
@@ -73,6 +63,7 @@ export function createApp({ db, config, mailer, otpStore, distanceService }) {
     res.json(await userManagement.roles(req.user));
   });
   const distance = distanceService ?? createDistanceService(config.routing);
+  app.use('/api/employees', auth.authenticate, auth.authorize('employees'), createEmployeesRouter(db, { distanceService: distance }));
   app.use('/api/v1/distance/imports', auth.authenticate, auth.authorize('distanceImport'),
     createDistanceImportRouter(createDistanceImportJobs(distance)));
   app.use(['/api/distance', '/api/v1/distance'], auth.authenticate, auth.authorize('employees'), createDistanceRouter(distance));
